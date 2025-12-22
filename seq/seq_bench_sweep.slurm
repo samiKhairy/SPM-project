@@ -16,6 +16,7 @@ INPUTS=(
   inputs/input_20gb_p8192.dat
 )
 MEM_GEN_LIST=(1024 512) # MB per run: 1GB primary, 512MB backup
+MEM_MERGE_GB=32
 RUN_ROOT=seq/results_bench_sweep
 
 mkdir -p "$RUN_ROOT"
@@ -38,7 +39,7 @@ for input in "${INPUTS[@]}"; do
 
     echo ">>> [Seq] Phase 2: Merge ($num_runs runs)"
     # Seq merges all runs in one pass (K = num_runs)
-    time -p ./seq/bin/merge_seq "$run_dir/run_" "$num_runs" "$final_out"
+    time -p ./seq/bin/merge_seq "$run_dir/run_" "$num_runs" "$final_out" "$MEM_MERGE_GB"
 
     ./tools/bin/verify_sorted "$final_out"
   done

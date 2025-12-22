@@ -22,7 +22,7 @@ INPUTS=(
 )
 MEM_GEN_LIST=(1024 512) # MB per run: 1GB primary, 512MB backup
 RUN_ROOT=omp/results_bench_sweep
-MEM_MERGE_GB=64
+MEM_MERGE_GB=32
 K=32
 THREADS_LIST=(1 2 4 8 16)
 
@@ -55,7 +55,7 @@ for input in "${INPUTS[@]}"; do
             echo ">>> [OMP] Phase 2: Merge (K=$K, Threads=$OMP_NUM_THREADS)"
             time -p ./omp/bin/merge_omp "$run_dir/run_" "$final_out" "$K" "$MEM_MERGE_GB"
 
-            ./tools/verify_sorted "$final_out"
+            ./tools/bin/verify_sorted "$final_out"
         done
     done
 done

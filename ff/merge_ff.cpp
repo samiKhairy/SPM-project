@@ -197,6 +197,10 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
     {
         out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
     }
+
+    out.close();
+    if (!out.good())
+        throw std::runtime_error("Failed to close output cleanly: " + output);
 }
 
 // ------------------ main orchestration ------------------
