@@ -182,6 +182,8 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
         if (out_buf.size() + rec_sz > outbuf_bytes)
         {
             out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+            if (!out.good())
+                throw std::runtime_error("Write failed while merging to: " + output);
             out_buf.clear();
         }
         append_bytes(out_buf, &rc.cur.key, 8);
@@ -196,7 +198,13 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
     if (!out_buf.empty())
     {
         out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+        if (!out.good())
+            throw std::runtime_error("Final write failed while merging to: " + output);
     }
+
+    out.close();
+    if (!out.good())
+        throw std::runtime_error("Failed to close output file: " + output);
 }
 
 // ------------------ main orchestration ------------------
