@@ -95,6 +95,16 @@ int main(int argc, char **argv)
     }
     if (in_buf_size > max_in_buf)
         in_buf_size = max_in_buf;
+    if (in_buf_size < 12 + static_cast<size_t>(payload_max))
+    {
+        std::cerr << "FATAL: Input buffer too small for payload_max.\n"
+                  << "       Required minimum per-run buffer: "
+                  << ((12 + payload_max) / 1024.0 / 1024.0) << " MB\n"
+                  << "       Available per-run buffer: "
+                  << (in_buf_size / 1024.0 / 1024.0) << " MB\n"
+                  << "       Reduce num_runs, increase memory budget, or lower payload_max.\n";
+        return 1;
+    }
 
     // Output buffer: stay within budget, clamp to sane limits
     size_t out_buf_size = OUTPUT_MEM_BUDGET;

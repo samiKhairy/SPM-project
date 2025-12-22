@@ -248,13 +248,11 @@ int main(int argc, char **argv)
         // Use 75% of total memory to be safe
         const size_t safe_mem = (total_bytes * 3) / 4;
 
-        // Calculate max active input streams (Workers * K files per worker)
-        size_t active_streams = static_cast<size_t>(workers * K);
-        if (active_streams == 0)
-            active_streams = 1;
-
-        // Buffer per stream
-        size_t inbuf = safe_mem / active_streams;
+        // Calculate per-worker memory and buffer per input file.
+        const size_t worker_count = static_cast<size_t>(workers);
+        const size_t mem_per_worker = safe_mem / (worker_count > 0 ? worker_count : 1);
+        const size_t files_per_worker = static_cast<size_t>(K);
+        size_t inbuf = mem_per_worker / (files_per_worker > 0 ? files_per_worker : 1);
         const size_t outbuf = 16ULL * 1024 * 1024; // 16MB output buffer fixed
 
         // Clamp to sane limits (4MB - 64MB)
@@ -270,6 +268,7 @@ int main(int argc, char **argv)
                   << "  K:           " << K << "\n"
                   << "  workers:     " << workers << "\n"
                   << "  mem_total:   " << total_mem_gb << " GB\n"
+                  << "  mem/worker:  " << (mem_per_worker / 1024 / 1024) << " MB\n"
                   << "  inbuf/run:   " << (inbuf / 1024 / 1024) << " MB\n"
                   << "  outbuf:      " << (outbuf / 1024 / 1024) << " MB\n";
 
