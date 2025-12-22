@@ -9,23 +9,37 @@ set -euo pipefail
 cd $HOME/project || exit 1
 
 # === CONFIG ===
-INPUT=inputs/input_10gb.dat
-RUN_DIR=seq/results_bench_sweep
-FINAL_OUT=seq/results_bench_sweep/final.dat
-MEM_GEN=32  # 32MB chunks -> ~320 runs
+INPUTS=(
+  inputs/input_10gb_p256.dat
+  inputs/input_10gb_p8192.dat
+  inputs/input_20gb_p256.dat
+  inputs/input_20gb_p8192.dat
+)
+MEM_GEN_LIST=(1024 512) # MB per run: 1GB primary, 512MB backup
+RUN_ROOT=seq/results_bench_sweep
 
-mkdir -p "$RUN_DIR"
+mkdir -p "$RUN_ROOT"
 
-echo ">>> [Seq] Phase 1: Generation (Budget: ${MEM_GEN}MB)"
-rm -rf "$RUN_DIR"/*
-time -p ./seq/bin/run_gen_seq "$INPUT" "$MEM_GEN" "$RUN_DIR/run_"
+for input in "${INPUTS[@]}"; do
+  input_base=$(basename "$input" .dat)
+  for mem_gen in "${MEM_GEN_LIST[@]}"; do
+    run_dir="$RUN_ROOT/$input_base/mem_${mem_gen}mb"
+    final_out="$run_dir/final.dat"
 
-NUM_RUNS=$(ls -1 "$RUN_DIR"/run_*.dat | wc -l)
-echo "    Generated $NUM_RUNS runs"
-sync
+    mkdir -p "$run_dir"
 
-echo ">>> [Seq] Phase 2: Merge ($NUM_RUNS runs)"
-# Seq merges all runs in one pass (K = NUM_RUNS)
-time -p ./seq/bin/merge_seq "$RUN_DIR/run_" "$NUM_RUNS" "$FINAL_OUT"
+    echo ">>> [Seq] Phase 1: Generation (Input: $input_base, Budget: ${mem_gen}MB)"
+    rm -rf "$run_dir"/*
+    time -p ./seq/bin/run_gen_seq "$input" "$mem_gen" "$run_dir/run_"
 
-./tools/verify_sorted "$FINAL_OUT"
+    num_runs=$(ls -1 "$run_dir"/run_*.dat | wc -l)
+    echo "    Generated $num_runs runs"
+    sync
+
+    echo ">>> [Seq] Phase 2: Merge ($num_runs runs)"
+    # Seq merges all runs in one pass (K = num_runs)
+    time -p ./seq/bin/merge_seq "$run_dir/run_" "$num_runs" "$final_out"
+
+    ./tools/verify_sorted "$final_out"
+  done
+done
