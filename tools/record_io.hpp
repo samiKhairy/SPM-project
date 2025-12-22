@@ -58,6 +58,11 @@ namespace recio
             {
                 throw std::runtime_error("RecordReader: payload_max out of allowed range");
             }
+            if (buf_size_ < 12 + static_cast<size_t>(payload_max_))
+            {
+                throw std::runtime_error("RecordReader: buffer too small for payload_max (" +
+                                         std::to_string(payload_max_) + " bytes)");
+            }
             refill_(); // prime the buffer
         }
 

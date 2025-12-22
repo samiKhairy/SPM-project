@@ -41,6 +41,33 @@ struct HeapNode
 
 static std::vector<std::string> list_runs(const std::string &prefix, const std::string &final_out)
 {
+    auto parse_run_id = [](const std::string &base, const fs::path &p, uint64_t &out_id) -> bool
+    {
+        const std::string name = p.filename().string();
+        if (name.size() < base.size() + 1 + 4)
+            return false;
+        if (name.rfind(base, 0) != 0)
+            return false;
+        if (p.extension() != ".dat")
+            return false;
+
+        const std::string mid = name.substr(base.size(), name.size() - base.size() - 4);
+        if (mid.empty())
+            return false;
+        for (char c : mid)
+            if (c < '0' || c > '9')
+                return false;
+        try
+        {
+            out_id = std::stoull(mid);
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    };
+
     std::vector<std::string> files;
     std::string dir = fs::path(prefix).parent_path().string();
     if (dir.empty())
@@ -48,16 +75,30 @@ static std::vector<std::string> list_runs(const std::string &prefix, const std::
     std::string base = fs::path(prefix).filename().string();
     const std::string final_out_abs = fs::absolute(final_out).string();
 
+    struct Item
+    {
+        uint64_t id;
+        std::string path;
+    };
+    std::vector<Item> items;
+
     for (const auto &p : fs::directory_iterator(dir))
     {
         if (!p.is_regular_file())
             continue;
-        const std::string fname = p.path().filename().string();
         const std::string full_path = fs::absolute(p.path()).string();
-        if (fname.rfind(base, 0) == 0 && p.path().extension() == ".dat" && full_path != final_out_abs)
-            files.push_back(p.path().string());
+        if (full_path == final_out_abs)
+            continue;
+        uint64_t id = 0;
+        if (parse_run_id(base, p.path(), id))
+            items.push_back({id, p.path().string()});
     }
-    std::sort(files.begin(), files.end());
+
+    std::sort(items.begin(), items.end(), [](const Item &a, const Item &b)
+              { return a.id < b.id; });
+    files.reserve(items.size());
+    for (const auto &it : items)
+        files.push_back(it.path);
     return files;
 }
 
