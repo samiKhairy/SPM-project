@@ -1,0 +1,47 @@
+>>> [OMP] Phase 1: Generation (Input: input_10gb_p256, Budget: 1024MB, Threads: 1)
+=== OpenMP Run Generation ===
+Total RAM budget: 1024 MB
+Effective data budget: 409.6 MB (accounting for sort overhead)
+Threads: 1
+
+[Run   0] Read: 1.244s | [1;32mSort: 0.418s[0m | Write: 3.674s | Size: 346.549 MB | Records: 2754755
+[Run   1] Read: 0.593s | [1;32mSort: 0.396s[0m | Write: 9.289s | Size: 346.593 MB | Records: 2752832
+[Run   2] Read: 0.606s | [1;32mSort: 0.395s[0m | Write: 5.820s | Size: 346.589 MB | Records: 2752993
+[Run   3] Read: 0.954s | [1;32mSort: 0.396s[0m | Write: 5.106s | Size: 346.614 MB | Records: 2751914
+[Run   4] Read: 0.509s | [1;32mSort: 0.395s[0m | Write: 6.759s | Size: 346.587 MB | Records: 2753080
+[Run   5] Read: 0.496s | [1;32mSort: 0.395s[0m | Write: 3.882s | Size: 346.581 MB | Records: 2753328
+[Run   6] Read: 0.698s | [1;32mSort: 0.395s[0m | Write: 4.408s | Size: 346.607 MB | Records: 2752205
+[Run   7] Read: 0.493s | [1;32mSort: 0.395s[0m | Write: 7.035s | Size: 346.596 MB | Records: 2752677
+[Run   8] Read: 0.503s | [1;32mSort: 0.395s[0m | Write: 6.888s | Size: 346.598 MB | Records: 2752587
+[Run   9] Read: 0.492s | [1;32mSort: 0.394s[0m | Write: 5.412s | Size: 346.579 MB | Records: 2753415
+[Run  10] Read: 0.435s | [1;32mSort: 0.395s[0m | Write: 7.737s | Size: 346.569 MB | Records: 2753854
+[Run  11] Read: 0.500s | [1;32mSort: 0.396s[0m | Write: 6.009s | Size: 346.554 MB | Records: 2754509
+[Run  12] Read: 0.505s | [1;32mSort: 0.395s[0m | Write: 6.983s | Size: 346.576 MB | Records: 2753556
+[Run  13] Read: 0.503s | [1;32mSort: 0.395s[0m | Write: 4.429s | Size: 346.585 MB | Records: 2753150
+[Run  14] Read: 0.505s | [1;32mSort: 0.395s[0m | Write: 8.382s | Size: 346.597 MB | Records: 2752635
+[Run  15] Read: 0.502s | [1;32mSort: 0.394s[0m | Write: 7.893s | Size: 346.594 MB | Records: 2752774
+[Run  16] Read: 0.507s | [1;32mSort: 0.396s[0m | Write: 5.646s | Size: 346.575 MB | Records: 2753581
+[Run  17] Read: 0.499s | [1;32mSort: 0.396s[0m | Write: 5.172s | Size: 346.574 MB | Records: 2753638
+[Run  18] Read: 0.506s | [1;32mSort: 0.396s[0m | Write: 5.690s | Size: 346.592 MB | Records: 2752864
+[Run  19] Read: 0.535s | [1;32mSort: 0.396s[0m | Write: 2.813s | Size: 346.566 MB | Records: 2754008
+[Run  20] Read: 0.504s | [1;32mSort: 0.395s[0m | Write: 2.703s | Size: 346.599 MB | Records: 2752555
+[Run  21] Read: 0.445s | [1;32mSort: 0.427s[0m | Write: 2.703s | Size: 346.537 MB | Records: 2755242
+[Run  22] Read: 0.656s | [1;32mSort: 0.395s[0m | Write: 2.642s | Size: 346.587 MB | Records: 2753075
+[Run  23] Read: 0.798s | [1;32mSort: 0.395s[0m | Write: 2.742s | Size: 346.557 MB | Records: 2754377
+[Run  24] Read: 0.714s | [1;32mSort: 0.395s[0m | Write: 2.648s | Size: 346.609 MB | Records: 2752101
+[Run  25] Read: 0.556s | [1;32mSort: 0.395s[0m | Write: 2.755s | Size: 346.598 MB | Records: 2752573
+[Run  26] Read: 0.506s | [1;32mSort: 0.394s[0m | Write: 2.765s | Size: 346.603 MB | Records: 2752365
+[Run  27] Read: 0.011s | [1;32mSort: 0.023s[0m | Write: 0.599s | Size: 28.776 MB | Records: 228762
+
+=== OpenMP Generation Stats ===
+Total Time:  165.10 s
+Total Read:  15.77 s (Disk I/O)
+Total Sort:  10.75 s (CPU Parallel)
+Total Write: 138.58 s (Disk I/O)
+Throughput:  56.85 MB/s
+Runs created: 28
+real 165.24
+user 25.32
+sys 16.43
+>>> [OMP] Phase 2: Merge (K=32, Threads=1)
+slurmstepd-node03: error: *** JOB 484606 ON node03 CANCELLED AT 2025-12-22T23:37:15 ***

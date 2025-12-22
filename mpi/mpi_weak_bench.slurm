@@ -17,17 +17,18 @@ export PATH=$MPI_ROOT/bin:$PATH
 export LD_LIBRARY_PATH=$MPI_ROOT/lib:$UCX_ROOT/lib:${LD_LIBRARY_PATH:-}
 export LIBRARY_PATH=$UCX_ROOT/lib:${LIBRARY_PATH:-}
 
-cd $HOME/project || exit 1
+cd $HOME/projectcopy || exit 1
 
 export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
 # === CONFIG ===
-PER_NODE_GB=5
-OUT_PREFIX=mpi/results_weak/
+PER_NODE_GB=4
+OUT_PREFIX=mpi/results_weak
 NODES_LIST=(1 2 4 8)
-THREADS_LIST=(1 2 4 8)
-INPUT_TEMPLATE=inputs/input_%sgb.dat
+THREADS_LIST=(4 8)
+PAYLOADS=(p256 p8192)
+INPUT_TEMPLATE=inputs/input_%sgb_%s.dat
 
 mkdir -p "$OUT_PREFIX"
 
@@ -36,10 +37,12 @@ which mpirun
 
 for nodes in "${NODES_LIST[@]}"; do
   input_gb=$((PER_NODE_GB * nodes))
-  input_file=$(printf "$INPUT_TEMPLATE" "$input_gb")
-  for threads in "${THREADS_LIST[@]}"; do
-    export OMP_NUM_THREADS="$threads"
-    echo ">>> [MPI Weak] nodes=$nodes threads=$threads input=$input_file"
-    time -p mpirun -np "$nodes" --map-by "node:PE=${threads}" ./mpi/bin/merge_mpi "$input_file" "$OUT_PREFIX"
+  for payload in "${PAYLOADS[@]}"; do
+    input_file=$(printf "$INPUT_TEMPLATE" "$input_gb" "$payload")
+    for threads in "${THREADS_LIST[@]}"; do
+      export OMP_NUM_THREADS="$threads"
+      echo ">>> [MPI Weak] nodes=$nodes threads=$threads input=$input_file"
+      time -p mpirun -np "$nodes" --map-by "node:PE=${threads}" ./mpi/bin/merge_mpi "$input_file" "$OUT_PREFIX"
+    done
   done
 done
