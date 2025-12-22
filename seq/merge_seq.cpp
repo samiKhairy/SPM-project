@@ -75,18 +75,42 @@ int main(int argc, char **argv)
     // Calculate buffer per input file
     size_t in_buf_size = INPUT_MEM_BUDGET / (num_runs > 0 ? num_runs : 1);
 
-    // Clamp input buffer: Min 1MB, Max 64MB
-    if (in_buf_size < 1024 * 1024)
-        in_buf_size = 1024 * 1024;
-    if (in_buf_size > 64 * 1024 * 1024)
-        in_buf_size = 64 * 1024 * 1024;
+    // Clamp input buffer: Min 256KB, Max 64MB
+    const size_t min_in_buf = 256 * 1024;
+    const size_t max_in_buf = 64 * 1024 * 1024;
+    if (in_buf_size < min_in_buf)
+    {
+        // Avoid exceeding total budget when num_runs is large
+        if (min_in_buf * num_runs > INPUT_MEM_BUDGET && num_runs > 0)
+        {
+            in_buf_size = INPUT_MEM_BUDGET / num_runs;
+            std::cout << "WARNING: Too many runs for minimum buffer size. "
+                      << "Reducing per-run input buffer to "
+                      << (in_buf_size / 1024.0) << " KB to stay within budget.\n";
+        }
+        else
+        {
+            in_buf_size = min_in_buf;
+        }
+    }
+    if (in_buf_size > max_in_buf)
+        in_buf_size = max_in_buf;
 
-    // Output buffer: use available budget, clamped
+    // Output buffer: stay within budget, clamp to sane limits
     size_t out_buf_size = OUTPUT_MEM_BUDGET;
-    if (out_buf_size < 16 * 1024 * 1024)
-        out_buf_size = 16 * 1024 * 1024;
-    if (out_buf_size > 256 * 1024 * 1024)
-        out_buf_size = 256 * 1024 * 1024;
+    const size_t min_out_buf = 1 * 1024 * 1024;
+    const size_t max_out_buf = 256 * 1024 * 1024;
+    if (OUTPUT_MEM_BUDGET < min_out_buf)
+    {
+        std::cout << "WARNING: Output buffer budget is small ("
+                  << (OUTPUT_MEM_BUDGET / 1024.0) << " KB). "
+                  << "Using full output budget.\n";
+        out_buf_size = OUTPUT_MEM_BUDGET;
+    }
+    else
+    {
+        out_buf_size = std::min(OUTPUT_MEM_BUDGET, max_out_buf);
+    }
 
     std::cout << "=== Sequential Merge Configuration ===\n";
     std::cout << "Memory budget: " << mem_budget_gb << " GB\n";

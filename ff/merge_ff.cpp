@@ -182,6 +182,8 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
         if (out_buf.size() + rec_sz > outbuf_bytes)
         {
             out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+            if (!out.good())
+                throw std::runtime_error("Write failed while merging to: " + output);
             out_buf.clear();
         }
         append_bytes(out_buf, &rc.cur.key, 8);
@@ -196,7 +198,13 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
     if (!out_buf.empty())
     {
         out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+        if (!out.good())
+            throw std::runtime_error("Final write failed while merging to: " + output);
     }
+
+    out.close();
+    if (!out.good())
+        throw std::runtime_error("Failed to close output file: " + output);
 }
 
 // ------------------ main orchestration ------------------
@@ -268,6 +276,8 @@ int main(int argc, char **argv)
         ff::ParallelFor pfor(workers);
 
         int round = 0;
+        std::vector<std::string> prev_round_files;
+
         while (files.size() > 1)
         {
             // Group into chunks of K
@@ -301,11 +311,10 @@ int main(int argc, char **argv)
                 merge_k_runs(ins, out_name, inbuf, outbuf, payload_max);
                 next[static_cast<size_t>(gi)] = fs::absolute(out_name).string(); });
 
-            // Cleanup intermediate files from previous rounds
-            // (Careful not to delete original run files)
-            if (round > 0)
+            // Cleanup intermediate files from previous round
+            if (!prev_round_files.empty())
             {
-                for (const auto &f : files)
+                for (const auto &f : prev_round_files)
                 {
                     fs::path p(f);
                     const std::string name = p.filename().string();
@@ -317,6 +326,7 @@ int main(int argc, char **argv)
                 }
             }
 
+            prev_round_files = next;
             files.swap(next);
             round++;
             std::cout << "Round " << round << " complete -> " << files.size() << " files remain\n";
