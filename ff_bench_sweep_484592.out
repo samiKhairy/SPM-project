@@ -317,3 +317,20 @@ real 329.46
 user 138.34
 sys 17.06
 >>> [FF] Phase 2: Merge (K=32, Workers=1)
+FastFlow Merge configuration
+  prefix:      ff/results_bench_sweep/run_
+  final_out:   ff/results_bench_sweep/final.dat
+  runs:        310
+  K:           32
+  workers:     1
+  mem_total:   24 GB
+  inbuf/run:   64 MB
+  outbuf:      16 MB
+Round 1 complete -> 10 files remain
+Round 2 complete -> 1 files remain
+Merge complete -> ff/results_bench_sweep/final.dat
+real 766.28
+user 8.04
+sys 34.66
+OK: file sorted (5000000 records)
+>>> [FF] Phase 1: Generation (Budget: 32MB, Workers: 2)
