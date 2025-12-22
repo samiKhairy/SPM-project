@@ -96,12 +96,21 @@ int main(int argc, char **argv)
     if (in_buf_size > max_in_buf)
         in_buf_size = max_in_buf;
 
-    // Output buffer: use available budget, clamped
+    // Output buffer: stay within budget, clamp to sane limits
     size_t out_buf_size = OUTPUT_MEM_BUDGET;
-    if (out_buf_size < 16 * 1024 * 1024)
-        out_buf_size = 16 * 1024 * 1024;
-    if (out_buf_size > 256 * 1024 * 1024)
-        out_buf_size = 256 * 1024 * 1024;
+    const size_t min_out_buf = 1 * 1024 * 1024;
+    const size_t max_out_buf = 256 * 1024 * 1024;
+    if (OUTPUT_MEM_BUDGET < min_out_buf)
+    {
+        std::cout << "WARNING: Output buffer budget is small ("
+                  << (OUTPUT_MEM_BUDGET / 1024.0) << " KB). "
+                  << "Using full output budget.\n";
+        out_buf_size = OUTPUT_MEM_BUDGET;
+    }
+    else
+    {
+        out_buf_size = std::min(OUTPUT_MEM_BUDGET, max_out_buf);
+    }
 
     std::cout << "=== Sequential Merge Configuration ===\n";
     std::cout << "Memory budget: " << mem_budget_gb << " GB\n";
