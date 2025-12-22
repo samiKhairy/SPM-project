@@ -20,7 +20,7 @@ INPUTS=(
 )
 MEM_GEN_LIST=(1024 512) # MB per worker task: 1GB primary, 512MB backup
 RUN_ROOT=ff/results_bench_sweep
-MEM_MERGE_GB=64
+MEM_MERGE_GB=32
 
 K=32
 WORKERS_LIST=(1 2 4 8 16)
