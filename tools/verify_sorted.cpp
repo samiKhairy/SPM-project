@@ -47,6 +47,8 @@ int main(int argc, char **argv)
     std::cout << "File size: " << (file_size / 1024.0 / 1024.0) << " MB\n";
     std::cout << "Payload max: " << payload_max << " bytes\n\n";
 
+    std::vector<char> scratch(1024 * 1024);
+
     while (true)
     {
         uint64_t key;
@@ -93,22 +95,18 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        // Skip payload (we don't need to read it, just verify it exists)
-        in.seekg(len, std::ios::cur);
-        if (!in.good() && !in.eof())
+        // Read and discard payload to ensure bytes actually exist
+        uint32_t remaining = len;
+        while (remaining > 0)
         {
-            std::cerr << "ERROR: Failed to skip payload at record " << count << "\n";
-            std::cerr << "       Expected " << len << " bytes of payload\n";
-            std::cerr << "       File may be truncated\n";
-            return 1;
-        }
-
-        // Check if we unexpectedly hit EOF in the middle of a record
-        if (in.eof() && in.gcount() < static_cast<std::streamsize>(len))
-        {
-            std::cerr << "ERROR: Truncated payload at record " << count << "\n";
-            std::cerr << "       Expected " << len << " bytes, found " << in.gcount() << "\n";
-            return 1;
+            const uint32_t chunk = std::min<uint32_t>(remaining, static_cast<uint32_t>(scratch.size()));
+            if (!in.read(scratch.data(), chunk))
+            {
+                std::cerr << "ERROR: Truncated payload at record " << count << "\n";
+                std::cerr << "       Expected " << len << " bytes, file ended early\n";
+                return 1;
+            }
+            remaining -= chunk;
         }
 
         prev_key = key;

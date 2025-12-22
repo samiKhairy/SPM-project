@@ -54,7 +54,7 @@ static std::vector<std::string> list_runs(const std::string &prefix, const std::
             continue;
         const std::string fname = p.path().filename().string();
         const std::string full_path = fs::absolute(p.path()).string();
-        if (fname.rfind(base, 0) == 0 && fname.find(".dat") != std::string::npos && full_path != final_out_abs)
+        if (fname.rfind(base, 0) == 0 && p.path().extension() == ".dat" && full_path != final_out_abs)
             files.push_back(p.path().string());
     }
     std::sort(files.begin(), files.end());

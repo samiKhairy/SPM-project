@@ -76,10 +76,18 @@ static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t 
 // === FIX 1: HEADER-ONLY SCANNERS
 // ==========================================
 
+static inline void validate_payload_len_or_throw(uint32_t len)
+{
+    if (len < recio::MIN_PAYLOAD_LEN || len > recio::HARD_PAYLOAD_MAX)
+        throw std::runtime_error("Invalid payload length encountered during header scan: " + std::to_string(len));
+}
+
 // Quickly scan file to find chunk boundaries for each rank
 std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_ranks)
 {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
+    if (!in)
+        throw std::runtime_error("Failed to open input file for offsets: " + path);
     uint64_t total_size = in.tellg();
     in.seekg(0);
 
@@ -108,6 +116,7 @@ std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_rank
             break;
         if (!in.read((char *)&len, 4))
             break;
+        validate_payload_len_or_throw(len);
 
         // SKIP PAYLOAD (Zero I/O cost for payload)
         in.seekg(len, std::ios::cur);
@@ -128,6 +137,8 @@ std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_rank
 std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
 {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
+    if (!in)
+        throw std::runtime_error("Failed to open input file for splitters: " + path);
     size_t fsize = in.tellg();
     in.seekg(0);
 
@@ -152,6 +163,7 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
             break;
         if (!in.read((char *)&len, 4))
             break;
+        validate_payload_len_or_throw(len);
         in.seekg(len, std::ios::cur); // Skip payload
 
         if (count++ % stride == 0)
