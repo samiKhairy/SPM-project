@@ -10,6 +10,8 @@
  */
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -17,6 +19,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 // FastFlow Includes
@@ -65,9 +68,15 @@ struct Reader : ff::ff_node
     std::string input_path;
     uint64_t task_budget;
     uint32_t payload_max;
+    std::atomic<int> &inflight;
+    int max_inflight;
 
-    Reader(std::string path, uint64_t budget, uint32_t pmax)
-        : input_path(std::move(path)), task_budget(budget), payload_max(pmax) {}
+    Reader(std::string path, uint64_t budget, uint32_t pmax, std::atomic<int> &counter, int max_tasks)
+        : input_path(std::move(path)),
+          task_budget(budget),
+          payload_max(pmax),
+          inflight(counter),
+          max_inflight(max_tasks) {}
 
     void *svc(void *) override
     {
@@ -91,7 +100,13 @@ struct Reader : ff::ff_node
 
             while (true)
             {
+                while (inflight.load(std::memory_order_acquire) >= max_inflight)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+
                 Task *t = new Task();
+                inflight.fetch_add(1, std::memory_order_release);
                 t->run_id = run_id++;
 
                 const uint64_t safe_reserve = std::min<uint64_t>(task_budget, 512ULL * 1024 * 1024);
@@ -142,6 +157,7 @@ struct Reader : ff::ff_node
                 if (t->meta.empty())
                 {
                     delete t;
+                    inflight.fetch_sub(1, std::memory_order_release);
                     return NULL; // EOS
                 }
                 ff_send_out((void *)t);
@@ -150,6 +166,7 @@ struct Reader : ff::ff_node
         catch (const std::exception &e)
         {
             std::cerr << "Reader Exception: " << e.what() << "\n";
+            inflight.store(0, std::memory_order_release);
             return NULL;
         }
         return NULL;
@@ -184,8 +201,11 @@ struct Writer : ff::ff_node
 {
     std::string run_prefix;
     std::vector<char> out_buffer;
+    std::atomic<int> &inflight;
 
-    Writer(std::string prefix) : run_prefix(std::move(prefix))
+    Writer(std::string prefix, std::atomic<int> &counter)
+        : run_prefix(std::move(prefix)),
+          inflight(counter)
     {
         out_buffer.reserve(16 * 1024 * 1024);
     }
@@ -223,12 +243,14 @@ struct Writer : ff::ff_node
 
             std::cout << "Wrote run: " << fname << " (" << t->meta.size() << " recs)\n";
             delete t;
+            inflight.fetch_sub(1, std::memory_order_release);
             return GO_ON;
         }
         catch (const std::exception &e)
         {
             std::cerr << "Writer Exception: " << e.what() << "\n";
             delete t;
+            inflight.fetch_sub(1, std::memory_order_release);
             return NULL;
         }
     }
@@ -279,8 +301,10 @@ int main(int argc, char **argv)
               << "  Workers:       " << n_workers << "\n"
               << "  Budget/Worker: " << (task_budget / 1024.0 / 1024.0) << " MB\n";
 
-    Reader reader(input, task_budget, payload_max);
-    Writer writer(prefix);
+    const int max_inflight = std::max(2, n_workers + 1);
+    std::atomic<int> tasks_inflight{0};
+    Reader reader(input, task_budget, payload_max, tasks_inflight, max_inflight);
+    Writer writer(prefix, tasks_inflight);
 
     // ... The rest of the pipeline setup remains exactly the same ...
     std::vector<ff::ff_node *> workers;
