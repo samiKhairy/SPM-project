@@ -266,14 +266,13 @@ int main(int argc, char **argv)
 
     if (total_budget_bytes < static_cast<uint64_t>(n_workers) * min_task_budget)
     {
-        std::cout << "WARNING: Total budget is low for the worker count. "
-                  << "Per-worker budget will be small (" << (task_budget / 1024.0 / 1024.0)
-                  << " MB).\n";
+        std::cerr << "ERROR: Total budget is too small for the requested worker count.\n"
+                  << "       Required minimum: " << (static_cast<uint64_t>(n_workers) * min_task_budget / 1024.0 / 1024.0)
+                  << " MB (" << min_task_budget / 1024.0 / 1024.0 << " MB per worker)\n";
+        return 1;
     }
-    else
-    {
-        task_budget = std::max(task_budget, min_task_budget);
-    }
+
+    task_budget = std::max(task_budget, min_task_budget);
 
     std::cout << "FastFlow RunGen Config:\n"
               << "  Total Budget:  " << mem_budget_mb << " MB\n"

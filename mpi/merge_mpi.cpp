@@ -76,14 +76,14 @@ static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t 
 // === FIX 1: HEADER-ONLY SCANNERS
 // ==========================================
 
-static inline void validate_payload_len_or_throw(uint32_t len)
+static inline void validate_payload_len_or_throw(uint32_t len, uint32_t payload_max)
 {
-    if (len < recio::MIN_PAYLOAD_LEN || len > recio::HARD_PAYLOAD_MAX)
+    if (len < recio::MIN_PAYLOAD_LEN || len > payload_max)
         throw std::runtime_error("Invalid payload length encountered during header scan: " + std::to_string(len));
 }
 
 // Quickly scan file to find chunk boundaries for each rank
-std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_ranks)
+std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_ranks, uint32_t payload_max)
 {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
     if (!in)
@@ -116,9 +116,11 @@ std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_rank
             break;
         if (!in.read((char *)&len, 4))
             break;
-        validate_payload_len_or_throw(len);
+        validate_payload_len_or_throw(len, payload_max);
 
         // SKIP PAYLOAD (Zero I/O cost for payload)
+        if (current_pos + 12 + len > total_size)
+            throw std::runtime_error("Truncated record detected during offset scan");
         in.seekg(len, std::ios::cur);
 
         current_pos += (12 + len);
@@ -134,7 +136,7 @@ std::vector<uint64_t> find_file_offsets_fast(const std::string &path, int n_rank
 }
 
 // Quickly sample keys without reading payloads
-std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
+std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks, uint32_t payload_max)
 {
     std::ifstream in(path, std::ios::binary | std::ios::ate);
     if (!in)
@@ -156,6 +158,7 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
     size_t count = 0;
     uint64_t key;
     uint32_t len;
+    uint64_t current_pos = 0;
 
     while (in.peek() != EOF)
     {
@@ -163,8 +166,12 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
             break;
         if (!in.read((char *)&len, 4))
             break;
-        validate_payload_len_or_throw(len);
+        validate_payload_len_or_throw(len, payload_max);
+        current_pos += 12;
+        if (current_pos + len > fsize)
+            throw std::runtime_error("Truncated record detected during splitter scan");
         in.seekg(len, std::ios::cur); // Skip payload
+        current_pos += len;
 
         if (count++ % stride == 0)
         {
@@ -429,13 +436,16 @@ int main(int argc, char **argv)
     if (argc < 3)
     {
         if (rank == 0)
-            std::cerr << "Usage: mpirun ./mpi_distributed_sort <input> <output_prefix>\n";
+            std::cerr << "Usage: mpirun ./mpi_distributed_sort <input> <output_prefix> [payload_max]\n";
         MPI_Finalize();
         return 1;
     }
 
     std::string input_file = argv[1];
     std::string output_prefix = argv[2];
+    uint32_t payload_max = recio::HARD_PAYLOAD_MAX;
+    if (argc >= 4)
+        payload_max = static_cast<uint32_t>(std::stoul(argv[3]));
     std::string temp_dir = fs::path(output_prefix).parent_path().string() + "/mpi_partitions";
 
     // --- SETUP ---
@@ -457,9 +467,9 @@ int main(int argc, char **argv)
     if (rank == 0)
     {
         std::cout << "[Rank 0] Scanning offsets (Header-Only)...\n";
-        file_offsets = find_file_offsets_fast(input_file, size);
+        file_offsets = find_file_offsets_fast(input_file, size, payload_max);
         std::cout << "[Rank 0] Sampling splitters (Header-Only)...\n";
-        splitters = find_splitters_fast(input_file, size);
+        splitters = find_splitters_fast(input_file, size, payload_max);
     }
 
     MPI_Bcast(file_offsets.data(), size + 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
