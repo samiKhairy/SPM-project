@@ -305,10 +305,12 @@ void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_
         size_t rec_sz = 12 + rv.len;
 
         // === FIX 2: MEMORY CHECK WITH META OVERHEAD ===
-        // We must count the vector<Meta> size too!
-        size_t meta_overhead = (meta.size() + 1) * sizeof(Meta);
+        // We must count both meta and tmp sizes since tmp is resized to meta.size() during sorting.
+        size_t projected_meta_bytes = (meta.size() + 1) * sizeof(Meta);
+        size_t projected_tmp_bytes = projected_meta_bytes;
+        size_t total_overhead = projected_meta_bytes + projected_tmp_bytes;
 
-        if (payload_buf.size() + rec_sz + meta_overhead > MEM_BUDGET_BYTES)
+        if (payload_buf.size() + rec_sz + total_overhead > MEM_BUDGET_BYTES)
         {
             flush_batch();
         }
