@@ -144,20 +144,41 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks, 
     size_t fsize = in.tellg();
     in.seekg(0);
 
-    size_t num_samples = n_ranks * 200; // 200 samples per rank is usually sufficient
+    // Pass 1: estimate average record size from an initial slice.
+    const size_t sample_bytes = std::max<size_t>(1024 * 1024, fsize / 100);
+    size_t bytes_scanned = 0;
+    size_t records_scanned = 0;
+    uint64_t key;
+    uint32_t len;
+
+    while (bytes_scanned < sample_bytes && in.peek() != EOF)
+    {
+        if (!in.read((char *)&key, 8))
+            break;
+        if (!in.read((char *)&len, 4))
+            break;
+        validate_payload_len_or_throw(len, payload_max);
+        if (bytes_scanned + 12 + len > fsize)
+            throw std::runtime_error("Truncated record detected during splitter scan");
+        in.seekg(len, std::ios::cur);
+        bytes_scanned += (12 + len);
+        records_scanned++;
+    }
+
+    const size_t avg_rec_size = (records_scanned > 0) ? (bytes_scanned / records_scanned) : 1024;
+
+    // Pass 2: sample evenly using the estimated average size.
+    in.clear();
+    in.seekg(0);
+
+    const size_t num_samples = n_ranks * 200;
     std::vector<uint64_t> samples;
     samples.reserve(num_samples);
 
-    // Estimate stride to get ~num_samples evenly spaced
-    // Average record size guess: 1KB.
-    // This is just a heuristic to skip through the file.
-    size_t avg_rec_size = 1024;
-    size_t total_recs_est = fsize / avg_rec_size;
-    size_t stride = std::max<size_t>(1, total_recs_est / num_samples);
+    const size_t total_recs_est = fsize / std::max<size_t>(1, avg_rec_size);
+    const size_t stride = std::max<size_t>(1, total_recs_est / num_samples);
 
     size_t count = 0;
-    uint64_t key;
-    uint32_t len;
     uint64_t current_pos = 0;
 
     while (in.peek() != EOF)
@@ -170,7 +191,7 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks, 
         current_pos += 12;
         if (current_pos + len > fsize)
             throw std::runtime_error("Truncated record detected during splitter scan");
-        in.seekg(len, std::ios::cur); // Skip payload
+        in.seekg(len, std::ios::cur);
         current_pos += len;
 
         if (count++ % stride == 0)
