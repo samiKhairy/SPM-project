@@ -245,7 +245,7 @@ int main(int argc, char **argv)
     }
 
     const std::string input = argv[1];
-    // FIX: Read as MB, strictly matching OpenMP
+    // FIX: Read as total MB budget (matching seq/omp)
     const uint64_t mem_budget_mb = std::stoull(argv[2]);
     const std::string prefix = argv[3];
     const int n_workers = (argc > 4) ? std::stoi(argv[4]) : 4;
@@ -260,12 +260,25 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // FIX: Direct assignment. No division.
-    // Every worker gets exactly 128MB (or whatever is passed)
-    uint64_t task_budget = mem_budget_mb * 1024ULL * 1024ULL;
+    const uint64_t total_budget_bytes = mem_budget_mb * 1024ULL * 1024ULL;
+    const uint64_t min_task_budget = 16ULL * 1024ULL * 1024ULL; // 16MB minimum preferred
+    uint64_t task_budget = total_budget_bytes / static_cast<uint64_t>(n_workers);
+
+    if (total_budget_bytes < static_cast<uint64_t>(n_workers) * min_task_budget)
+    {
+        std::cout << "WARNING: Total budget is low for the worker count. "
+                  << "Per-worker budget will be small (" << (task_budget / 1024.0 / 1024.0)
+                  << " MB).\n";
+    }
+    else
+    {
+        task_budget = std::max(task_budget, min_task_budget);
+    }
+
     std::cout << "FastFlow RunGen Config:\n"
-              << "  Budget/Worker: " << mem_budget_mb << " MB\n"
-              << "  Workers:       " << n_workers << "\n";
+              << "  Total Budget:  " << mem_budget_mb << " MB\n"
+              << "  Workers:       " << n_workers << "\n"
+              << "  Budget/Worker: " << (task_budget / 1024.0 / 1024.0) << " MB\n";
 
     Reader reader(input, task_budget, payload_max);
     Writer writer(prefix);
