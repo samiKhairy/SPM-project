@@ -1,0 +1,31 @@
+>>> [MPI Weak] Input per node: 5GB
+/opt/ohpc/pub/mpi/openmpi5-gnu12/5.0.3/bin/mpirun
+>>> [MPI Weak] nodes=1 threads=1 input=inputs/input_5gb.dat
+[Rank 0] Scanning offsets (Header-Only)...
+[Rank 0] Sampling splitters (Header-Only)...
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  RecordReader: input stream not open/ready
+[node05:3906911] *** Process received signal ***
+[node05:3906911] Signal: Aborted (6)
+[node05:3906911] Signal code:  (-6)
+[node05:3906911] [ 0] /lib64/libc.so.6(+0x3ebf0)[0x7f02b27b9bf0]
+[node05:3906911] [ 1] /lib64/libc.so.6(+0x8bedc)[0x7f02b2806edc]
+[node05:3906911] [ 2] /lib64/libc.so.6(raise+0x16)[0x7f02b27b9b46]
+[node05:3906911] [ 3] /lib64/libc.so.6(abort+0xd3)[0x7f02b27a3833]
+[node05:3906911] [ 4] /opt/ohpc/pub/compiler/gcc/12.2.0/lib64/libstdc++.so.6(+0xaac19)[0x7f02b2b79c19]
+[node05:3906911] [ 5] /opt/ohpc/pub/compiler/gcc/12.2.0/lib64/libstdc++.so.6(+0xb609a)[0x7f02b2b8509a]
+[node05:3906911] [ 6] /opt/ohpc/pub/compiler/gcc/12.2.0/lib64/libstdc++.so.6(+0xb6105)[0x7f02b2b85105]
+[node05:3906911] [ 7] /opt/ohpc/pub/compiler/gcc/12.2.0/lib64/libstdc++.so.6(+0xb6358)[0x7f02b2b85358]
+[node05:3906911] [ 8] ./mpi/bin/merge_mpi[0x403831]
+[node05:3906911] [ 9] ./mpi/bin/merge_mpi[0x404533]
+[node05:3906911] [10] /lib64/libc.so.6(+0x295d0)[0x7f02b27a45d0]
+[node05:3906911] [11] /lib64/libc.so.6(__libc_start_main+0x80)[0x7f02b27a4680]
+[node05:3906911] [12] ./mpi/bin/merge_mpi[0x404a15]
+[node05:3906911] *** End of error message ***
+--------------------------------------------------------------------------
+prterun noticed that process rank 0 with PID 3906911 on node node05 exited on
+signal 6 (Aborted).
+--------------------------------------------------------------------------
+real 1.30
+user 0.04
+sys 0.13

@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <iomanip>
 #include <string>
-
+#include <vector>    // Required for std::vector
+#include <algorithm> // Required for std::min
 static constexpr uint32_t MIN_PAYLOAD_LEN = 8;
 static constexpr uint32_t HARD_PAYLOAD_MAX = 1u << 20; // 1MB
 

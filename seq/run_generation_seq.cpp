@@ -41,6 +41,14 @@ static inline void append_bytes(std::vector<char> &buf, const void *src, size_t 
     std::memcpy(buf.data() + old, src, n);
 }
 
+static inline size_t clamp(size_t v, size_t lo, size_t hi)
+{
+    if (v < lo)
+        return lo;
+    if (v > hi)
+        return hi;
+    return v;
+}
 int main(int argc, char **argv)
 {
     if (argc < 4)
@@ -57,9 +65,20 @@ int main(int argc, char **argv)
     if (argc >= 5)
         payload_max = static_cast<uint32_t>(std::stoul(argv[4]));
 
-    const uint64_t MEM_BUDGET = mem_budget_mb * 1024ULL * 1024ULL;
-    const size_t IN_BUF_SIZE = 64 * 1024 * 1024;  // 64MB input buffering
-    const size_t OUT_BUF_SIZE = 16 * 1024 * 1024; // 16MB output buffering
+    const size_t MEM_BUDGET = mem_budget_mb * 1024ull * 1024ull;
+
+    // Policy-based buffer sizing
+    const size_t IN_BUF_SIZE = clamp(MEM_BUDGET / 4, 8ull << 20, 128ull << 20);  // 25%
+    const size_t OUT_BUF_SIZE = clamp(MEM_BUDGET / 10, 8ull << 20, 64ull << 20); // 10%
+    const size_t SAFETY_GAP = MEM_BUDGET / 20;                                   // 5%
+
+    if (MEM_BUDGET <= IN_BUF_SIZE + OUT_BUF_SIZE + SAFETY_GAP + payload_max)
+    {
+        throw std::runtime_error("Memory budget too small for buffers + safety");
+    }
+
+    const size_t PAYLOAD_BUDGET =
+        MEM_BUDGET - IN_BUF_SIZE - OUT_BUF_SIZE - SAFETY_GAP - payload_max;
 
     std::cout << "=== Sequential Run Generation ===\n";
     std::cout << "Memory budget: " << mem_budget_mb << " MB\n";
@@ -82,7 +101,11 @@ int main(int argc, char **argv)
     std::vector<char> stash_payload;
 
     std::vector<char> payload_buffer;
+    payload_buffer.reserve(PAYLOAD_BUDGET); // Pre-allocate full budget capacity
+
     std::vector<Meta> meta;
+    // Estimate meta capacity assuming an average record size (e.g., 32 bytes payload)
+    meta.reserve(PAYLOAD_BUDGET / (sizeof(Meta) + 32));
 
     std::vector<char> out_buffer;
     out_buffer.reserve(OUT_BUF_SIZE);
@@ -122,32 +145,30 @@ int main(int argc, char **argv)
         // Fill run
         while (true)
         {
-            if (!meta.empty() && memory_used() >= MEM_BUDGET)
+            if (!meta.empty() && memory_used() >= PAYLOAD_BUDGET)
                 break;
 
             const bool ok = rr.next(rv);
             if (!ok)
                 break; // EOF
 
-            const uint64_t projected =
-                static_cast<uint64_t>(payload_buffer.size()) +
-                static_cast<uint64_t>(meta.size()) * sizeof(Meta) +
-                static_cast<uint64_t>(rv.len) +
-                sizeof(Meta);
-
-            // If adding this record would exceed budget and we already have something:
-            if (!meta.empty() && projected > MEM_BUDGET)
+            size_t projected = 0;
+            if (__builtin_add_overflow(payload_buffer.size(), meta.size() * sizeof(Meta), &projected) ||
+                __builtin_add_overflow(projected, rv.len, &projected) ||
+                __builtin_add_overflow(projected, sizeof(Meta), &projected))
             {
-                // Stash this record for next run
-                stash_payload.resize(rv.len);
-                std::memcpy(stash_payload.data(), rv.payload, rv.len);
+                throw std::runtime_error("Memory accounting overflow");
+            }
+
+            if (!meta.empty() && projected > PAYLOAD_BUDGET)
+            {
+                has_stash = true;
+                stash_payload.assign(rv.payload, rv.payload + rv.len);
                 stash.key = rv.key;
                 stash.len = rv.len;
                 stash.payload = stash_payload.data();
-                has_stash = true;
                 break;
             }
-
             consume_record(rv);
         }
 

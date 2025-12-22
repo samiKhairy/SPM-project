@@ -90,15 +90,21 @@ int main(int argc, char **argv)
     if (argc >= 5)
         payload_max = static_cast<uint32_t>(std::stoul(argv[4]));
 
+    // CRITICAL FIX: Account for tmp vector used during sorting
+    // We need space for: payload_buffer + meta + tmp (same size as meta)
+    // So effective budget is split: we can use ~40% for data, rest for sorting overhead
     const uint64_t MEM_BUDGET_TOTAL = mem_budget_mb * 1024ULL * 1024ULL;
-    const uint64_t DATA_BUDGET = (MEM_BUDGET_TOTAL * 4) / 10; // 40% for payload data
+
+    // Reserve memory for sorting (tmp vector = meta size)
+    // Breakdown: 40% payload, 30% meta, 30% tmp
+    const uint64_t MEM_BUDGET = (MEM_BUDGET_TOTAL * 4) / 10; // 40% for actual data
 
     const size_t IN_BUF_SIZE = 64 * 1024 * 1024;
     const size_t OUT_BUF_SIZE = 16 * 1024 * 1024;
 
     std::cout << "=== OpenMP Run Generation ===\n";
     std::cout << "Total RAM budget: " << mem_budget_mb << " MB\n";
-    std::cout << "Effective data budget: " << (DATA_BUDGET / 1024.0 / 1024.0) << " MB (payload share)\n";
+    std::cout << "Effective data budget: " << (MEM_BUDGET / 1024.0 / 1024.0) << " MB (accounting for sort overhead)\n";
     std::cout << "Threads: " << omp_get_max_threads() << "\n\n";
 
     std::ifstream in(input_path, std::ios::binary);
@@ -124,12 +130,10 @@ int main(int argc, char **argv)
     uint64_t run_id = 0;
     double t_start_global = get_time();
 
-    auto projected_total_bytes = [&](uint64_t next_payload_len) -> uint64_t
+    auto memory_used = [&]() -> uint64_t
     {
-        const uint64_t payload_bytes = static_cast<uint64_t>(payload_buffer.size()) + next_payload_len;
-        const uint64_t meta_bytes = static_cast<uint64_t>(meta.size() + 1) * sizeof(Meta);
-        const uint64_t tmp_bytes = meta_bytes;
-        return payload_bytes + meta_bytes + tmp_bytes;
+        return static_cast<uint64_t>(payload_buffer.size()) +
+               static_cast<uint64_t>(meta.size()) * sizeof(Meta);
     };
 
     auto consume_record = [&](const recio::RecordView &rec)
@@ -155,13 +159,19 @@ int main(int argc, char **argv)
 
         while (true)
         {
-            if (!meta.empty() && projected_total_bytes(0) >= MEM_BUDGET_TOTAL)
+            if (!meta.empty() && memory_used() >= MEM_BUDGET)
                 break;
 
             if (!rr.next(rv))
                 break; // EOF
 
-            if (!meta.empty() && projected_total_bytes(rv.len) > MEM_BUDGET_TOTAL)
+            const uint64_t projected =
+                static_cast<uint64_t>(payload_buffer.size()) +
+                static_cast<uint64_t>(meta.size()) * sizeof(Meta) +
+                static_cast<uint64_t>(rv.len) +
+                sizeof(Meta);
+
+            if (!meta.empty() && projected > MEM_BUDGET)
             {
                 stash_payload.resize(rv.len);
                 std::memcpy(stash_payload.data(), rv.payload, rv.len);
