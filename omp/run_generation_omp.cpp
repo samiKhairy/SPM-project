@@ -1,4 +1,3 @@
-// run_generation_omp.cpp - FIXED VERSION
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -10,14 +9,7 @@
 #include <omp.h>
 #include <iomanip>
 
-#include "../tools/record_io.hpp"
-
-struct Meta
-{
-    uint64_t key;
-    uint64_t offset;
-    uint32_t len;
-};
+#include "../tools/common_sort.hpp"
 
 // --- Statistics Wrapper ---
 struct Stats
@@ -46,7 +38,7 @@ static inline void append_bytes(std::vector<char> &buf, size_t &pos, const void 
 // -------- OpenMP task mergesort over Meta --------
 static constexpr size_t TASK_THRESHOLD = 1 << 14;
 
-static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t m, size_t r)
+static inline void merge_meta(std::vector<sortutil::Meta> &a, std::vector<sortutil::Meta> &tmp, size_t l, size_t m, size_t r)
 {
     size_t i = l, j = m, k = l;
     while (i < m && j < r)
@@ -59,12 +51,12 @@ static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size
         a[x] = tmp[x];
 }
 
-static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t r)
+static void mergesort_task(std::vector<sortutil::Meta> &a, std::vector<sortutil::Meta> &tmp, size_t l, size_t r)
 {
     const size_t n = r - l;
     if (n <= TASK_THRESHOLD)
     {
-        std::sort(a.begin() + l, a.begin() + r, [](const Meta &x, const Meta &y)
+        std::sort(a.begin() + l, a.begin() + r, [](const sortutil::Meta &x, const sortutil::Meta &y)
                   { return x.key < y.key; });
         return;
     }
@@ -81,7 +73,7 @@ int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        std::cerr << "Usage: ./run_gen_omp <input_file> <mem_budget_mb> <run_prefix> [payload_max]\n";
+        std::cerr << "Usage: ./run_gen_omp <input_file> <mem_budget_mb> <run_prefix> [payload_max] [workers]\n";
         return 1;
     }
 
@@ -93,21 +85,22 @@ int main(int argc, char **argv)
     if (argc >= 5)
         payload_max = static_cast<uint32_t>(std::stoul(argv[4]));
 
-    // CRITICAL FIX: Account for tmp vector used during sorting
-    // We need space for: payload_buffer + meta + tmp (same size as meta)
-    // So effective budget is split: we can use ~40% for data, rest for sorting overhead
+    if (argc >= 6)
+    {
+        const int workers = std::stoi(argv[5]);
+        if (workers <= 0)
+            throw std::runtime_error("workers must be > 0");
+        omp_set_num_threads(workers);
+    }
+
     const uint64_t MEM_BUDGET_TOTAL = mem_budget_mb * 1024ULL * 1024ULL;
-
-    // Reserve memory for sorting (tmp vector = meta size)
-    // Breakdown: 40% payload, 30% meta, 30% tmp
-    const uint64_t MEM_BUDGET = (MEM_BUDGET_TOTAL * 4) / 10; // 40% for actual data
-
-    const size_t IN_BUF_SIZE = 64 * 1024 * 1024;
-    const size_t OUT_BUF_SIZE = 16 * 1024 * 1024;
+    const sortutil::RunBufferPlan plan = sortutil::plan_run_buffers(MEM_BUDGET_TOTAL, payload_max);
+    const size_t PAYLOAD_BUDGET = plan.payload_budget;
 
     std::cout << "=== OpenMP Run Generation ===\n";
     std::cout << "Total RAM budget: " << mem_budget_mb << " MB\n";
-    std::cout << "Effective data budget: " << (MEM_BUDGET / 1024.0 / 1024.0) << " MB (accounting for sort overhead)\n";
+    std::cout << "Input buffer: " << (plan.in_buf_size / 1024.0 / 1024.0) << " MB\n";
+    std::cout << "Output buffer: " << (plan.out_buf_size / 1024.0 / 1024.0) << " MB\n";
     std::cout << "Threads: " << omp_get_max_threads() << "\n\n";
 
     std::ifstream in(input_path, std::ios::binary);
@@ -117,7 +110,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    recio::RecordReader rr(in, IN_BUF_SIZE, payload_max);
+    recio::RecordReader rr(in, plan.in_buf_size, payload_max);
     recio::RecordView rv;
 
     bool has_stash = false;
@@ -125,9 +118,9 @@ int main(int argc, char **argv)
     std::vector<char> stash_payload;
 
     std::vector<char> payload_buffer;
-    std::vector<Meta> meta;
-    std::vector<Meta> tmp;
-    std::vector<char> out_buffer(OUT_BUF_SIZE);
+    std::vector<sortutil::Meta> meta;
+    std::vector<sortutil::Meta> tmp;
+    std::vector<char> out_buffer(plan.out_buf_size);
     size_t out_pos = 0;
 
     uint64_t run_id = 0;
@@ -136,14 +129,14 @@ int main(int argc, char **argv)
     auto memory_used = [&]() -> uint64_t
     {
         return static_cast<uint64_t>(payload_buffer.size()) +
-               static_cast<uint64_t>(meta.size()) * sizeof(Meta);
+               static_cast<uint64_t>(meta.size()) * sizeof(sortutil::Meta) * 2;
     };
 
     auto consume_record = [&](const recio::RecordView &rec)
     {
         const uint64_t off = payload_buffer.size();
         payload_buffer.insert(payload_buffer.end(), rec.payload, rec.payload + rec.len);
-        meta.push_back(Meta{rec.key, off, rec.len});
+        meta.push_back(sortutil::Meta{rec.key, off, rec.len});
     };
 
     while (true)
@@ -161,7 +154,7 @@ int main(int argc, char **argv)
 
         while (true)
         {
-            if (!meta.empty() && memory_used() >= MEM_BUDGET)
+            if (!meta.empty() && memory_used() >= PAYLOAD_BUDGET)
                 break;
 
             if (!rr.next(rv))
@@ -169,11 +162,11 @@ int main(int argc, char **argv)
 
             const uint64_t projected =
                 static_cast<uint64_t>(payload_buffer.size()) +
-                static_cast<uint64_t>(meta.size()) * sizeof(Meta) +
+                static_cast<uint64_t>(meta.size()) * sizeof(sortutil::Meta) * 2 +
                 static_cast<uint64_t>(rv.len) +
-                sizeof(Meta);
+                sizeof(sortutil::Meta) * 2;
 
-            if (!meta.empty() && projected > MEM_BUDGET)
+            if (!meta.empty() && projected > PAYLOAD_BUDGET)
             {
                 stash_payload.assign(rv.payload, rv.payload + rv.len);
                 stash.key = rv.key;
@@ -192,7 +185,6 @@ int main(int argc, char **argv)
         // --- OPENMP SORT PHASE ---
         double t0_sort = get_time();
 
-        // Resize tmp to match meta size
         tmp.resize(meta.size());
 
 #pragma omp parallel
@@ -217,7 +209,7 @@ int main(int argc, char **argv)
         for (const auto &m : meta)
         {
             size_t rec_size = 12 + m.len;
-            if (out_pos + rec_size > OUT_BUF_SIZE)
+            if (out_pos + rec_size > plan.out_buf_size)
             {
                 out.write(out_buffer.data(), out_pos);
                 if (!out.good())
@@ -256,7 +248,7 @@ int main(int argc, char **argv)
         std::cout << "[Run " << std::setw(3) << (run_id - 1) << "] "
                   << "Read: " << std::fixed << std::setprecision(3)
                   << (get_time() - t0_read - dt_sort - dt_write) << "s | "
-                  << "\033[1;32mSort: " << dt_sort << "s\033[0m | " // Green for OMP
+                  << "Sort: " << dt_sort << "s | "
                   << "Write: " << dt_write << "s | "
                   << "Size: " << (payload_buffer.size() / 1024.0 / 1024.0) << " MB | "
                   << "Records: " << meta.size() << "\n";

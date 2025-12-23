@@ -4,9 +4,6 @@
  *
  * Architecture:
  * [Reader] ---> [Farm (Workers) -> Collector] ---> [Writer]
- *
- * FIX: 'ff_node' is abstract. We created a concrete 'Identity' node
- * to act as the Collector.
  */
 
 #include <algorithm>
@@ -24,21 +21,13 @@
 #include <ff/farm.hpp>
 #include <ff/pipeline.hpp>
 
-#include "../tools/record_io.hpp"
-
-// --- Data Structures ---
-struct Meta
-{
-    uint64_t key;
-    uint64_t offset;
-    uint32_t len;
-};
+#include "../tools/common_sort.hpp"
 
 struct Task
 {
     uint64_t run_id;
     std::vector<char> payload_buffer;
-    std::vector<Meta> meta;
+    std::vector<sortutil::Meta> meta;
 };
 
 static inline void append_bytes_local(std::vector<char> &buf, size_t &pos, const void *src, size_t n)
@@ -53,7 +42,7 @@ static inline void append_bytes_local(std::vector<char> &buf, size_t &pos, const
 
 // ---------------------- Helper Nodes ----------------------
 
-// FIX: Concrete Identity Node for the Collector
+// Concrete identity node for the collector.
 struct Identity : ff::ff_node
 {
     void *svc(void *task) override
@@ -67,10 +56,11 @@ struct Reader : ff::ff_node
 {
     std::string input_path;
     uint64_t task_budget;
+    size_t in_buf_size;
     uint32_t payload_max;
 
-    Reader(std::string path, uint64_t budget, uint32_t pmax)
-        : input_path(std::move(path)), task_budget(budget), payload_max(pmax) {}
+    Reader(std::string path, uint64_t budget, size_t in_buf, uint32_t pmax)
+        : input_path(std::move(path)), task_budget(budget), in_buf_size(in_buf), payload_max(pmax) {}
 
     void *svc(void *) override
     {
@@ -83,7 +73,7 @@ struct Reader : ff::ff_node
                 return NULL;
             }
 
-            recio::RecordReader rr(in, 64 * 1024 * 1024, payload_max);
+            recio::RecordReader rr(in, in_buf_size, payload_max);
             recio::RecordView rv;
 
             bool has_stash = false;
@@ -103,7 +93,7 @@ struct Reader : ff::ff_node
 
                 auto memory_used = [&]() -> uint64_t
                 {
-                    return t->payload_buffer.size() + t->meta.size() * sizeof(Meta);
+                    return t->payload_buffer.size() + t->meta.size() * sizeof(sortutil::Meta);
                 };
 
                 auto consume_record = [&](const recio::RecordView &rec)
@@ -127,7 +117,7 @@ struct Reader : ff::ff_node
                     if (!rr.next(rv))
                         break; // EOF
 
-                    uint64_t projected = memory_used() + rv.len + sizeof(Meta);
+                    uint64_t projected = memory_used() + rv.len + sizeof(sortutil::Meta);
                     if (!t->meta.empty() && projected > task_budget)
                     {
                         stash_payload.assign(rv.payload, rv.payload + rv.len);
@@ -166,7 +156,7 @@ struct Worker : ff::ff_node
         try
         {
             std::sort(t->meta.begin(), t->meta.end(),
-                      [](const Meta &a, const Meta &b)
+                      [](const sortutil::Meta &a, const sortutil::Meta &b)
                       {
                           return a.key < b.key;
                       });
@@ -186,9 +176,9 @@ struct Writer : ff::ff_node
     std::string run_prefix;
     std::vector<char> out_buffer;
 
-    Writer(std::string prefix) : run_prefix(std::move(prefix))
+    Writer(std::string prefix, size_t out_buf_size) : run_prefix(std::move(prefix))
     {
-        out_buffer.resize(16 * 1024 * 1024);
+        out_buffer.resize(out_buf_size);
     }
 
     void *svc(void *task) override
@@ -238,22 +228,21 @@ struct Writer : ff::ff_node
 
 int main(int argc, char **argv)
 {
-    // UPDATE usage message
     if (argc < 4)
     {
-        std::cerr << "Usage: ./run_gen_ff <input> <MEM_BUDGET_MB> <run_prefix> [n_workers] [payload_max]\n";
+        std::cerr << "Usage: ./run_gen_ff <input> <mem_budget_mb> <run_prefix> [payload_max] [workers]\n";
         return 1;
     }
 
     const std::string input = argv[1];
-    // FIX: Read as MB, strictly matching OpenMP
     const uint64_t mem_budget_mb = std::stoull(argv[2]);
     const std::string prefix = argv[3];
-    const int n_workers = (argc > 4) ? std::stoi(argv[4]) : 4;
 
     uint32_t payload_max = recio::HARD_PAYLOAD_MAX;
-    if (argc > 5)
-        payload_max = (uint32_t)std::stoul(argv[5]);
+    if (argc > 4)
+        payload_max = (uint32_t)std::stoul(argv[4]);
+
+    const int n_workers = (argc > 5) ? std::stoi(argv[5]) : 4;
 
     if (n_workers <= 0)
     {
@@ -261,15 +250,19 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // FIX: Direct assignment. No division.
-    // Every worker gets exactly 128MB (or whatever is passed)
-    uint64_t task_budget = mem_budget_mb * 1024ULL * 1024ULL;
-    std::cout << "FastFlow RunGen Config:\n"
-              << "  Budget/Worker: " << mem_budget_mb << " MB\n"
-              << "  Workers:       " << n_workers << "\n";
+    const uint64_t total_bytes = mem_budget_mb * 1024ULL * 1024ULL;
+    const uint64_t task_budget = total_bytes / static_cast<uint64_t>(n_workers);
+    const sortutil::RunBufferPlan plan = sortutil::plan_run_buffers(task_budget, payload_max);
 
-    Reader reader(input, task_budget, payload_max);
-    Writer writer(prefix);
+    std::cout << "FastFlow RunGen Config:\n"
+              << "  Total budget:  " << mem_budget_mb << " MB\n"
+              << "  Workers:       " << n_workers << "\n"
+              << "  Per worker:    " << (task_budget / 1024.0 / 1024.0) << " MB\n"
+              << "  Input buffer:  " << (plan.in_buf_size / 1024.0 / 1024.0) << " MB\n"
+              << "  Output buffer: " << (plan.out_buf_size / 1024.0 / 1024.0) << " MB\n";
+
+    Reader reader(input, plan.payload_budget, plan.in_buf_size, payload_max);
+    Writer writer(prefix, plan.out_buf_size);
 
     // ... The rest of the pipeline setup remains exactly the same ...
     std::vector<ff::ff_node *> workers;
