@@ -399,6 +399,198 @@ void merge_local_files(const std::string &temp_dir, int my_rank, int n_ranks, co
         fs::remove(f);
 }
 
+static std::string make_tree_temp(const std::string &temp_dir, int rank, int step, const std::string &suffix)
+{
+    return temp_dir + "/tree_r" + std::to_string(rank) + "_s" + std::to_string(step) + "_" + suffix + ".dat";
+}
+
+static void merge_files(const std::vector<std::string> &inputs, const std::string &output_file)
+{
+    if (inputs.empty())
+        throw std::runtime_error("merge_files: empty input list");
+    if (inputs.size() == 1)
+    {
+        if (fs::absolute(inputs[0]) != fs::absolute(output_file))
+            fs::rename(inputs[0], output_file);
+        return;
+    }
+
+    struct Ctx
+    {
+        std::ifstream in;
+        std::unique_ptr<recio::RecordReader> rr;
+        recio::RecordView cur;
+        bool has = false;
+    };
+
+    size_t ram_budget = 24ULL * 1024 * 1024 * 1024;
+    size_t buf_per_file = ram_budget / (inputs.size() + 1);
+    if (buf_per_file > 64 * 1024 * 1024)
+        buf_per_file = 64 * 1024 * 1024;
+    if (buf_per_file < 1 * 1024 * 1024)
+        buf_per_file = 1 * 1024 * 1024;
+
+    std::vector<Ctx> ctx(inputs.size());
+    using Node = std::pair<uint64_t, int>;
+    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> heap;
+
+    for (size_t i = 0; i < inputs.size(); ++i)
+    {
+        ctx[i].in.open(inputs[i], std::ios::binary);
+        if (!ctx[i].in)
+            throw std::runtime_error("Cannot open merge input: " + inputs[i]);
+        ctx[i].rr = std::make_unique<recio::RecordReader>(ctx[i].in, buf_per_file, recio::HARD_PAYLOAD_MAX);
+        ctx[i].has = ctx[i].rr->next(ctx[i].cur);
+        if (ctx[i].has)
+            heap.push({ctx[i].cur.key, (int)i});
+    }
+
+    std::ofstream out(output_file, std::ios::binary);
+    if (!out)
+        throw std::runtime_error("Cannot open merge output: " + output_file);
+
+    std::vector<char> out_buf;
+    out_buf.reserve(64 * 1024 * 1024);
+
+    while (!heap.empty())
+    {
+        auto top = heap.top();
+        heap.pop();
+        int idx = top.second;
+        auto &c = ctx[idx];
+
+        size_t rec_sz = 12 + c.cur.len;
+        if (out_buf.size() + rec_sz > out_buf.capacity())
+        {
+            out.write(out_buf.data(), out_buf.size());
+            out_buf.clear();
+        }
+
+        size_t old = out_buf.size();
+        out_buf.resize(old + rec_sz);
+        char *ptr = out_buf.data() + old;
+        std::memcpy(ptr, &c.cur.key, 8);
+        std::memcpy(ptr + 8, &c.cur.len, 4);
+        std::memcpy(ptr + 12, c.cur.payload, c.cur.len);
+
+        c.has = c.rr->next(c.cur);
+        if (c.has)
+            heap.push({c.cur.key, idx});
+    }
+
+    if (!out_buf.empty())
+        out.write(out_buf.data(), out_buf.size());
+
+    out.close();
+    if (!out.good())
+        throw std::runtime_error("Failed to close output: " + output_file);
+}
+
+static void send_file_nonblocking(const std::string &path, int dest, int tag_base)
+{
+    std::ifstream in(path, std::ios::binary | std::ios::ate);
+    if (!in)
+        throw std::runtime_error("Cannot open file to send: " + path);
+    const uint64_t total = static_cast<uint64_t>(in.tellg());
+    in.seekg(0);
+
+    MPI_Request size_req;
+    MPI_Isend(&total, 1, MPI_UINT64_T, dest, tag_base, MPI_COMM_WORLD, &size_req);
+
+    const size_t chunk = 8ULL * 1024 * 1024;
+    std::vector<char> buf_a(chunk);
+    std::vector<char> buf_b(chunk);
+    MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+
+    uint64_t sent = 0;
+    int buf_idx = 0;
+    bool first = true;
+
+    while (sent < total)
+    {
+        std::vector<char> &buf = (buf_idx == 0) ? buf_a : buf_b;
+        const size_t to_read = static_cast<size_t>(std::min<uint64_t>(chunk, total - sent));
+        in.read(buf.data(), static_cast<std::streamsize>(to_read));
+        if (!in)
+            throw std::runtime_error("Failed reading file for send: " + path);
+
+        MPI_Request &req = reqs[buf_idx];
+        MPI_Isend(buf.data(), static_cast<int>(to_read), MPI_BYTE, dest, tag_base + 1, MPI_COMM_WORLD, &req);
+
+        if (!first)
+        {
+            const int prev = 1 - buf_idx;
+            MPI_Wait(&reqs[prev], MPI_STATUS_IGNORE);
+        }
+        first = false;
+
+        sent += to_read;
+        buf_idx = 1 - buf_idx;
+    }
+
+    MPI_Wait(&reqs[0], MPI_STATUS_IGNORE);
+    MPI_Wait(&reqs[1], MPI_STATUS_IGNORE);
+    MPI_Wait(&size_req, MPI_STATUS_IGNORE);
+}
+
+static void recv_file_nonblocking(const std::string &path, int src, int tag_base)
+{
+    uint64_t total = 0;
+    MPI_Request size_req;
+    MPI_Irecv(&total, 1, MPI_UINT64_T, src, tag_base, MPI_COMM_WORLD, &size_req);
+    MPI_Wait(&size_req, MPI_STATUS_IGNORE);
+
+    std::ofstream out(path, std::ios::binary);
+    if (!out)
+        throw std::runtime_error("Cannot open file to receive: " + path);
+
+    if (total == 0)
+        return;
+
+    const size_t chunk = 8ULL * 1024 * 1024;
+    std::vector<char> buf_a(chunk);
+    std::vector<char> buf_b(chunk);
+    MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    size_t sizes[2] = {0, 0};
+
+    uint64_t received = 0;
+    int buf_idx = 0;
+    bool first = true;
+
+    while (received < total)
+    {
+        std::vector<char> &buf = (buf_idx == 0) ? buf_a : buf_b;
+        const size_t to_recv = static_cast<size_t>(std::min<uint64_t>(chunk, total - received));
+        MPI_Request &req = reqs[buf_idx];
+        MPI_Irecv(buf.data(), static_cast<int>(to_recv), MPI_BYTE, src, tag_base + 1, MPI_COMM_WORLD, &req);
+        sizes[buf_idx] = to_recv;
+
+        if (!first)
+        {
+            const int prev = 1 - buf_idx;
+            MPI_Wait(&reqs[prev], MPI_STATUS_IGNORE);
+            std::vector<char> &prev_buf = (prev == 0) ? buf_a : buf_b;
+            out.write(prev_buf.data(), static_cast<std::streamsize>(sizes[prev]));
+        }
+        first = false;
+
+        received += to_recv;
+        buf_idx = 1 - buf_idx;
+    }
+
+    const int last_idx = 1 - buf_idx;
+    MPI_Wait(&reqs[last_idx], MPI_STATUS_IGNORE);
+    if (sizes[last_idx] > 0)
+    {
+        std::vector<char> &last_buf = (last_idx == 0) ? buf_a : buf_b;
+        out.write(last_buf.data(), static_cast<std::streamsize>(sizes[last_idx]));
+    }
+
+    out.close();
+    if (!out.good())
+        throw std::runtime_error("Failed to close received file: " + path);
+}
+
 // ==========================================
 // === MAIN DRIVER
 // ==========================================
@@ -466,14 +658,62 @@ int main(int argc, char **argv)
 
     // --- PHASE 3: LOCAL MERGE (Parallel) ---
     double t_reduce_start = MPI_Wtime();
-    std::string final_out = output_prefix + "rank_" + std::to_string(rank) + ".dat";
-    merge_local_files(temp_dir, rank, size, final_out);
+    std::string local_out = output_prefix + "rank_" + std::to_string(rank) + ".dat";
+    merge_local_files(temp_dir, rank, size, local_out);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0)
     {
         std::cout << "Phase 3 (Merge) Time: " << (MPI_Wtime() - t_reduce_start) << "s\n";
+    }
+
+    // --- PHASE 4: TREE MERGE (Non-blocking transfers) ---
+    double t_tree_start = MPI_Wtime();
+    std::string current_file = local_out;
+    bool current_is_temp = false;
+
+    for (int step = 1; step < size; step *= 2)
+    {
+        const int tag_base = 1000 + step;
+
+        if ((rank % (2 * step)) == 0)
+        {
+            const int partner = rank + step;
+            if (partner < size)
+            {
+                const std::string recv_file = make_tree_temp(temp_dir, rank, step, "recv");
+                recv_file_nonblocking(recv_file, partner, tag_base);
+
+                const std::string merged_file = make_tree_temp(temp_dir, rank, step, "merged");
+                merge_files({current_file, recv_file}, merged_file);
+
+                if (current_is_temp && fs::exists(current_file))
+                    fs::remove(current_file);
+                if (fs::exists(recv_file))
+                    fs::remove(recv_file);
+
+                current_file = merged_file;
+                current_is_temp = true;
+            }
+        }
+        else
+        {
+            const int dest = rank - step;
+            send_file_nonblocking(current_file, dest, tag_base);
+            if (current_is_temp && fs::exists(current_file))
+                fs::remove(current_file);
+            break;
+        }
+    }
+
+    if (rank == 0)
+    {
+        const std::string final_out = output_prefix + "final.dat";
+        if (fs::absolute(current_file) != fs::absolute(final_out))
+            fs::rename(current_file, final_out);
+        std::cout << "Phase 4 (Tree Merge) Time: " << (MPI_Wtime() - t_tree_start) << "s\n";
         std::cout << "Total Time: " << (MPI_Wtime() - t_start) << "s\n";
+        std::cout << "Final Output: " << final_out << "\n";
     }
 
     MPI_Finalize();
