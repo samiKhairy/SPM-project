@@ -19,15 +19,15 @@ export LIBRARY_PATH=$UCX_ROOT/lib:${LIBRARY_PATH:-}
 
 cd $HOME/projectcopy || exit 1
 
+export OMP_PROC_BIND=true
 export OMP_PLACES=cores
-export OMP_PROC_BIND=close
 
 # === CONFIG ===
 PER_NODE_GB=4
 OUT_PREFIX=mpi/results_weak
 NODES_LIST=(1 2 4 8)
 THREADS_LIST=(4 8)
-PAYLOADS=(p256 p8192)
+PAYLOADS=(p256 p8192 pskew)
 INPUT_TEMPLATE=inputs/input_%sgb_%s.dat
 
 mkdir -p "$OUT_PREFIX"
@@ -39,6 +39,10 @@ for nodes in "${NODES_LIST[@]}"; do
   input_gb=$((PER_NODE_GB * nodes))
   for payload in "${PAYLOADS[@]}"; do
     input_file=$(printf "$INPUT_TEMPLATE" "$input_gb" "$payload")
+    if [[ ! -f "$input_file" ]]; then
+      echo ">>> [MPI Weak] Skipping missing input: $input_file"
+      continue
+    fi
     for threads in "${THREADS_LIST[@]}"; do
       export OMP_NUM_THREADS="$threads"
       echo ">>> [MPI Weak] nodes=$nodes threads=$threads input=$input_file"
