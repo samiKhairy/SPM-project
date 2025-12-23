@@ -1,4 +1,3 @@
-// verify_sorted.cpp - ENHANCED VERSION
 #include <iostream>
 #include <fstream>
 #include <cstdint>
