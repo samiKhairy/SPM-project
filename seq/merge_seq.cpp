@@ -1,4 +1,3 @@
-    // merge_seq.cpp - FIXED VERSION
     #include <iostream>
     #include <fstream>
     #include <memory>

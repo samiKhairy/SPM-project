@@ -307,7 +307,6 @@ int main(int argc, char **argv)
 {
     try
     {
-        // UPDATE: Require 5 arguments (workers is mandatory) to avoid benchmark errors
         if (argc < 6)
         {
             std::cerr << "Usage: ./merge_ff <run_prefix> <final_out> <K> <TOTAL_MEM_GB> <workers> [payload_max]\n";

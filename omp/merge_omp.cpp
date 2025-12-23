@@ -1,4 +1,3 @@
-// merge_omp.cpp - FIXED VERSION
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -279,8 +278,8 @@ int main(int argc, char **argv)
     if (max_threads < 1)
         max_threads = 1;
 
-    // CRITICAL FIX: Limit concurrent file handles
-    // Most systems allow ~1024 file descriptors per process
+    // Limit concurrent file handles.
+    // Most systems allow ~1024 file descriptors per process.
     // Reserve some for OS, stdout, etc.
     const size_t MAX_SAFE_FILE_HANDLES = 800;
 

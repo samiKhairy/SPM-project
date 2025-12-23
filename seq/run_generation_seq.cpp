@@ -1,4 +1,3 @@
-// run_generation_seq.cpp - FIXED VERSION
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -244,7 +243,7 @@ int main(int argc, char **argv)
         std::cout << "[Run " << std::setw(3) << (run_id - 1) << "] "
                   << "Read: " << std::fixed << std::setprecision(3)
                   << (get_time() - t0_read - dt_sort - dt_write) << "s | "
-                  << "\033[1;33mSort: " << dt_sort << "s\033[0m | " // Yellow
+                  << "Sort: " << dt_sort << "s | "
                   << "Write: " << dt_write << "s | "
                   << "Size: " << (payload_buffer.size() / 1024.0 / 1024.0) << " MB | "
                   << "Records: " << meta.size() << "\n";
