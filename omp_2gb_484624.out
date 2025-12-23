@@ -1,0 +1,76 @@
+>>> [OpenMP] Phase 1: Generating Runs (Threads: 4, Budget: 512MB)
+=== OpenMP Run Generation ===
+Total RAM budget: 512 MB
+Effective data budget: 204.8 MB (accounting for sort overhead)
+Threads: 4
+
+[Run   0] Read: 0.359s | [1;32mSort: 0.092s[0m | Write: 1.615s | Size: 173.272 MB | Records: 1377481
+[Run   1] Read: 0.254s | [1;32mSort: 0.084s[0m | Write: 1.614s | Size: 173.285 MB | Records: 1376890
+[Run   2] Read: 0.254s | [1;32mSort: 0.081s[0m | Write: 1.748s | Size: 173.304 MB | Records: 1376062
+[Run   3] Read: 0.252s | [1;32mSort: 0.082s[0m | Write: 1.614s | Size: 173.282 MB | Records: 1377038
+[Run   4] Read: 0.251s | [1;32mSort: 0.081s[0m | Write: 1.597s | Size: 173.306 MB | Records: 1375988
+[Run   5] Read: 0.255s | [1;32mSort: 0.081s[0m | Write: 1.698s | Size: 173.300 MB | Records: 1376266
+[Run   6] Read: 0.251s | [1;32mSort: 0.081s[0m | Write: 1.636s | Size: 173.299 MB | Records: 1376296
+[Run   7] Read: 0.253s | [1;32mSort: 0.081s[0m | Write: 1.605s | Size: 173.293 MB | Records: 1376574
+[Run   8] Read: 0.251s | [1;32mSort: 0.081s[0m | Write: 1.653s | Size: 173.297 MB | Records: 1376400
+[Run   9] Read: 0.251s | [1;32mSort: 0.081s[0m | Write: 1.615s | Size: 173.302 MB | Records: 1376156
+[Run  10] Read: 0.178s | [1;32mSort: 0.066s[0m | Write: 1.351s | Size: 142.737 MB | Records: 1134849
+
+=== OpenMP Generation Stats ===
+Total Time:  21.45 s
+Total Read:  2.81 s (Disk I/O)
+Total Sort:  0.89 s (CPU Parallel)
+Total Write: 17.75 s (Disk I/O)
+Throughput:  87.45 MB/s
+Runs created: 11
+real 21.55
+user 5.26
+sys 3.43
+>>> [OpenMP] Phase 2: Merging (K=8, Threads=4, RAM: 1GB)
+=== merge_omp configuration ===
+Total RAM Budget: 1 GB
+Threads (requested): 4
+Threads (actual): 4
+K (requested): 8
+K (actual): 8
+Concurrent streams: 32
+Buffer per stream: 24 MB
+Initial file count: 11
+
+[R0][G1] Merged 3 files -> run__rnd0_1.tmp in 9.26s (61.26 MB/s)
+[R0][G0] Merged 8 files -> run__rnd0_0.tmp in 20.32s (72.79 MB/s)
+Round 0 complete in 20.32 s
+
+[R1][G0] Merged 2 files -> final_omp.dat in 23.54s (86.92 MB/s)
+Round 1 complete in 23.54 s
+
+=== Merge Complete ===
+Output: omp/results_2gb_test/input_2gb_p256/final_omp.dat
+real 44.25
+user 2.70
+sys 6.93
+Verifying file: omp/results_2gb_test/input_2gb_p256/final_omp.dat
+File size: 2046.19 MB
+Payload max: 1048576 bytes
+
+  Verified 1M records... (6.7%)
+  Verified 2M records... (13.4%)
+  Verified 3M records... (20.1%)
+  Verified 4M records... (26.9%)
+  Verified 5M records... (33.6%)
+  Verified 6M records... (40.3%)
+  Verified 7M records... (47.0%)
+  Verified 8M records... (53.7%)
+  Verified 9M records... (60.4%)
+  Verified 10M records... (67.1%)
+  Verified 11M records... (73.8%)
+  Verified 12M records... (80.5%)
+  Verified 13M records... (87.3%)
+  Verified 14M records... (94.0%)
+
+=== VERIFICATION SUCCESSFUL ===
+✓ File is properly sorted
+✓ Total records: 14900000
+✓ All record formats valid
+✓ No truncation detected
+✓ Total bytes: 2145589459 (2046.2 MB)

@@ -1,0 +1,85 @@
+>>> [Sequential] Phase 1: Generating Runs (Budget: 512MB)
+=== Sequential Run Generation ===
+Memory budget: 512 MB
+Input buffer: 128 MB
+Output buffer: 51.2 MB
+
+[Run   0] Read: 0.395s | [1;33mSort: 0.212s[0m | Write: 1.853s | Size: 259.065 MB | Records: 2059346
+[Run   1] Read: 0.336s | [1;33mSort: 0.213s[0m | Write: 2.008s | Size: 259.104 MB | Records: 2057664
+[Run   2] Read: 0.336s | [1;33mSort: 0.212s[0m | Write: 1.850s | Size: 259.082 MB | Records: 2058631
+[Run   3] Read: 0.336s | [1;33mSort: 0.212s[0m | Write: 1.868s | Size: 259.118 MB | Records: 2057045
+[Run   4] Read: 0.459s | [1;33mSort: 0.213s[0m | Write: 1.849s | Size: 259.091 MB | Records: 2058212
+[Run   5] Read: 0.336s | [1;33mSort: 0.215s[0m | Write: 1.846s | Size: 259.104 MB | Records: 2057663
+[Run   6] Read: 0.337s | [1;33mSort: 0.211s[0m | Write: 1.911s | Size: 259.082 MB | Records: 2058630
+[Run   7] Read: 0.026s | [1;33mSort: 0.045s[0m | Write: 0.488s | Size: 62.031 MB | Records: 492809
+
+=== Sequential Generation Complete ===
+Total Time:  17.77 s
+Total Read:  2.56 s (Disk I/O)
+Total Sort:  1.53 s (CPU)
+Total Write: 13.67 s (Disk I/O)
+Throughput:  105.57 MB/s
+Runs created: 8
+real 17.96
+user 4.48
+sys 2.97
+>>> [Sequential] Phase 2: Merging 8 runs (RAM: 1GB)
+=== Sequential Merge Configuration ===
+Memory budget: 1 GB
+Input files: 8
+Buffer per input file: 64 MB
+Output buffer: 64 MB
+Total memory allocated: 0.5625 GB
+
+Opening 8 run files...
+Merging...
+  Processed 1M records (137.4 MB)...
+  Processed 2M records (274.8 MB)...
+  Processed 3M records (412.0 MB)...
+  Processed 4M records (549.5 MB)...
+  Processed 5M records (686.8 MB)...
+  Processed 6M records (824.0 MB)...
+  Processed 7M records (961.3 MB)...
+  Processed 8M records (1098.7 MB)...
+  Processed 9M records (1236.0 MB)...
+  Processed 10M records (1373.3 MB)...
+  Processed 11M records (1510.7 MB)...
+  Processed 12M records (1648.1 MB)...
+  Processed 13M records (1785.4 MB)...
+  Processed 14M records (1922.7 MB)...
+
+=== Sequential Merge Complete ===
+Time: 15.29 s
+Throughput: 133.86 MB/s
+Records merged: 14900000
+Total bytes: 2046.19 MB
+real 15.31
+user 1.66
+sys 3.24
+Verifying file: seq/results_2gb_test/input_2gb_p256/final_seq.dat
+File size: 2046.19 MB
+Payload max: 1048576 bytes
+
+  Verified 1M records... (6.7%)
+  Verified 2M records... (13.4%)
+  Verified 3M records... (20.1%)
+  Verified 4M records... (26.9%)
+  Verified 5M records... (33.6%)
+  Verified 6M records... (40.3%)
+  Verified 7M records... (47.0%)
+  Verified 8M records... (53.7%)
+  Verified 9M records... (60.4%)
+  Verified 10M records... (67.1%)
+  Verified 11M records... (73.8%)
+  Verified 12M records... (80.5%)
+  Verified 13M records... (87.3%)
+  Verified 14M records... (94.0%)
+
+=== VERIFICATION SUCCESSFUL ===
+✓ File is properly sorted
+✓ Total records: 14900000
+✓ All record formats valid
+✓ No truncation detected
+✓ Total bytes: 2145589459 (2046.2 MB)
+
+

@@ -1,0 +1,18 @@
+1. Decide 2 payload profiles:
+
+   * **Small payload profile:** `payload_max = 256`
+   * **Large payload profile:** `payload_max = 8192`
+2. For each profile, compute N with the formula above.
+3. Generate files (examples below — replace N with your computed values):
+
+   * Small payload (256):
+
+     * `tools/bin/gen_records --output inputs/input_5gb_p256.dat --records <N_5GB> --payload-max 256 --seed 1`
+     * `tools/bin/gen_records --output inputs/input_10gb_p256.dat --records <N_10GB> --payload-max 256 --seed 2`
+     * `tools/bin/gen_records --output inputs/input_35gb_p256.dat --records <N_35GB> --payload-max 256 --seed 3`
+   * Large payload (8192):
+
+     * `tools/bin/gen_records --output inputs/input_5gb_p8192.dat --records <N_5GB> --payload-max 8192 --seed 11`
+     * `tools/bin/gen_records --output inputs/input_10gb_p8192.dat --records <N_10GB> --payload-max 8192 --seed 12`
+     * `tools/bin/gen_records --output inputs/input_35gb_p8192.dat --records <N_35GB> --payload-max 8192 --seed 13`
+4. Verify file sizes with `ls -lh inputs/` and adjust N if needed.

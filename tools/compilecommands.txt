@@ -1,0 +1,8 @@
+[s.khairy@spmln projectcopy]$ 
+[s.khairy@spmln projectcopy]$ g++ -O3 -std=c++17 -I ../fastflow/  -o ff/bin/merge_ff ff/merge_ff.cpp -lpthread
+[s.khairy@spmln projectcopy]$ g++ -O3 -std=c++17 -I ../fastflow -o ff/bin/run_gen_ff ff/run_generation_ff.cpp -lpthread
+[s.khairy@spmln projectcopy]$ g++ -O3 -std=c++17 -fopenmp -o omp/bin/merge_omp omp/merge_omp.cpp
+[s.khairy@spmln projectcopy]$ g++ -O3 -std=c++17 -fopenmp -o omp/bin/run_gen_omp omp/run_generation_omp.cpp
+[s.khairy@spmln projectcopy]$ 
+[s.khairy@spmln projectcopy]$ g++ -O3 -std=c++17 -o seq/bin/merge_seq seq/merge_seq.cpp
+[s.khairy@spmln projectcopy]$  g++ -O3 -std=c++17 -o seq/bin/run_gen_seq seq/run_generation_seq.cpp

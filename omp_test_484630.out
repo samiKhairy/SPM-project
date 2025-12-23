@@ -1,0 +1,64 @@
+>>> [OpenMP] Phase 1: Generating Runs (Threads: 16)
+=== OpenMP Run Generation ===
+Total RAM budget: 1024 MB
+Effective data budget: 409.6 MB (accounting for sort overhead)
+Threads: 16
+
+[Run   0] Read: 0.753s | [1;32mSort: 0.005s[0m | Write: 2.736s | Size: 407.212 MB | Records: 104263
+[Run   1] Read: 0.484s | [1;32mSort: 0.004s[0m | Write: 2.660s | Size: 407.211 MB | Records: 104103
+[Run   2] Read: 0.547s | [1;32mSort: 0.003s[0m | Write: 2.560s | Size: 407.213 MB | Records: 104140
+[Run   3] Read: 0.491s | [1;32mSort: 0.006s[0m | Write: 2.637s | Size: 407.210 MB | Records: 104310
+[Run   4] Read: 0.486s | [1;32mSort: 0.003s[0m | Write: 2.625s | Size: 407.217 MB | Records: 103927
+[Run   5] Read: 0.543s | [1;32mSort: 0.003s[0m | Write: 2.601s | Size: 407.218 MB | Records: 103976
+[Run   6] Read: 0.485s | [1;32mSort: 0.003s[0m | Write: 2.584s | Size: 407.221 MB | Records: 103869
+[Run   7] Read: 0.550s | [1;32mSort: 0.003s[0m | Write: 2.592s | Size: 407.213 MB | Records: 104032
+[Run   8] Read: 0.490s | [1;32mSort: 0.003s[0m | Write: 2.652s | Size: 407.217 MB | Records: 104060
+[Run   9] Read: 0.494s | [1;32mSort: 0.003s[0m | Write: 2.627s | Size: 407.218 MB | Records: 104021
+[Run  10] Read: 0.548s | [1;32mSort: 0.003s[0m | Write: 2.638s | Size: 407.211 MB | Records: 104211
+[Run  11] Read: 0.486s | [1;32mSort: 0.003s[0m | Write: 2.727s | Size: 407.215 MB | Records: 104064
+[Run  12] Read: 0.487s | [1;32mSort: 0.003s[0m | Write: 2.695s | Size: 407.213 MB | Records: 104120
+[Run  13] Read: 0.546s | [1;32mSort: 0.003s[0m | Write: 2.638s | Size: 407.212 MB | Records: 104148
+[Run  14] Read: 0.489s | [1;32mSort: 0.003s[0m | Write: 2.563s | Size: 407.214 MB | Records: 104082
+[Run  15] Read: 0.555s | [1;32mSort: 0.003s[0m | Write: 2.618s | Size: 407.212 MB | Records: 104201
+[Run  16] Read: 0.486s | [1;32mSort: 0.003s[0m | Write: 2.615s | Size: 407.208 MB | Records: 104400
+[Run  17] Read: 0.496s | [1;32mSort: 0.003s[0m | Write: 2.629s | Size: 407.216 MB | Records: 104119
+[Run  18] Read: 0.542s | [1;32mSort: 0.003s[0m | Write: 2.595s | Size: 407.224 MB | Records: 103706
+[Run  19] Read: 0.483s | [1;32mSort: 0.003s[0m | Write: 2.555s | Size: 407.214 MB | Records: 104242
+[Run  20] Read: 0.560s | [1;32mSort: 0.003s[0m | Write: 2.601s | Size: 407.215 MB | Records: 104178
+[Run  21] Read: 0.489s | [1;32mSort: 0.003s[0m | Write: 2.780s | Size: 407.218 MB | Records: 104009
+[Run  22] Read: 0.495s | [1;32mSort: 0.003s[0m | Write: 2.630s | Size: 407.215 MB | Records: 104062
+[Run  23] Read: 0.543s | [1;32mSort: 0.003s[0m | Write: 2.655s | Size: 407.209 MB | Records: 104373
+[Run  24] Read: 0.486s | [1;32mSort: 0.003s[0m | Write: 2.687s | Size: 407.216 MB | Records: 104040
+[Run  25] Read: 0.009s | [1;32mSort: 0.001s[0m | Write: 0.182s | Size: 28.454 MB | Records: 7344
+
+=== OpenMP Generation Stats ===
+Total Time:  79.19 s
+Total Read:  13.02 s (Disk I/O)
+Total Sort:  0.08 s (CPU Parallel)
+Total Write: 66.08 s (Disk I/O)
+Throughput:  128.91 MB/s
+Runs created: 26
+>>> [OpenMP] Phase 2: Merging (K=16, Threads=16)
+=== merge_omp configuration ===
+Total RAM Budget: 16 GB
+Threads (requested): 16
+Threads (actual): 16
+K (requested): 16
+K (actual): 16
+Concurrent streams: 256
+Buffer per stream: 4 MB
+Initial file count: 26
+
+[R0][G1] Merged 10 files -> run__rnd0_1.tmp in 35.78s (103.51 MB/s)
+[R0][G0] Merged 16 files -> run__rnd0_0.tmp in 58.89s (110.97 MB/s)
+Round 0 complete in 58.89 s
+
+[R1][G0] Merged 2 files -> final_omp.dat in 948.35s (10.80 MB/s)
+Round 1 complete in 948.35 s
+
+=== Merge Complete ===
+Output: omp/results_10gb_8192/input_10gb_p8192/final_omp.dat
+real 1007.76
+user 6.69
+sys 33.59
+ERROR: Cannot open file: omp/results_10gb_8192/input_10gb_p8192/final_omp.dat

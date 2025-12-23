@@ -1,0 +1,150 @@
+>>> [OpenMP] Phase 1: Generating Runs (Threads: 16)
+=== OpenMP Run Generation ===
+Total RAM budget: 1024 MB
+Effective data budget: 409.6 MB (accounting for sort overhead)
+Threads: 16
+
+[Run   0] Read: 0.774s | [1;32mSort: 0.133s[0m | Write: 3.930s | Size: 346.549 MB | Records: 2754755
+[Run   1] Read: 0.505s | [1;32mSort: 0.104s[0m | Write: 3.730s | Size: 346.593 MB | Records: 2752832
+[Run   2] Read: 0.508s | [1;32mSort: 0.099s[0m | Write: 4.032s | Size: 346.589 MB | Records: 2752993
+[Run   3] Read: 0.666s | [1;32mSort: 0.096s[0m | Write: 4.617s | Size: 346.614 MB | Records: 2751914
+[Run   4] Read: 0.526s | [1;32mSort: 0.099s[0m | Write: 6.630s | Size: 346.587 MB | Records: 2753080
+[Run   5] Read: 0.499s | [1;32mSort: 0.097s[0m | Write: 5.322s | Size: 346.581 MB | Records: 2753328
+[Run   6] Read: 0.692s | [1;32mSort: 0.097s[0m | Write: 7.356s | Size: 346.607 MB | Records: 2752205
+[Run   7] Read: 0.505s | [1;32mSort: 0.097s[0m | Write: 4.388s | Size: 346.596 MB | Records: 2752677
+[Run   8] Read: 0.495s | [1;32mSort: 0.098s[0m | Write: 7.450s | Size: 346.598 MB | Records: 2752587
+[Run   9] Read: 0.503s | [1;32mSort: 0.099s[0m | Write: 5.266s | Size: 346.579 MB | Records: 2753415
+[Run  10] Read: 0.442s | [1;32mSort: 0.096s[0m | Write: 8.893s | Size: 346.569 MB | Records: 2753854
+[Run  11] Read: 0.694s | [1;32mSort: 0.098s[0m | Write: 7.011s | Size: 346.554 MB | Records: 2754509
+[Run  12] Read: 0.496s | [1;32mSort: 0.098s[0m | Write: 4.777s | Size: 346.576 MB | Records: 2753556
+[Run  13] Read: 0.504s | [1;32mSort: 0.096s[0m | Write: 8.385s | Size: 346.585 MB | Records: 2753150
+[Run  14] Read: 0.684s | [1;32mSort: 0.097s[0m | Write: 7.248s | Size: 346.597 MB | Records: 2752635
+[Run  15] Read: 0.493s | [1;32mSort: 0.097s[0m | Write: 4.602s | Size: 346.594 MB | Records: 2752774
+[Run  16] Read: 0.498s | [1;32mSort: 0.098s[0m | Write: 8.835s | Size: 346.575 MB | Records: 2753581
+[Run  17] Read: 0.735s | [1;32mSort: 0.098s[0m | Write: 4.650s | Size: 346.574 MB | Records: 2753638
+[Run  18] Read: 0.529s | [1;32mSort: 0.095s[0m | Write: 7.519s | Size: 346.592 MB | Records: 2752864
+[Run  19] Read: 0.724s | [1;32mSort: 0.097s[0m | Write: 7.038s | Size: 346.566 MB | Records: 2754008
+[Run  20] Read: 0.500s | [1;32mSort: 0.096s[0m | Write: 5.035s | Size: 346.599 MB | Records: 2752555
+[Run  21] Read: 0.440s | [1;32mSort: 0.133s[0m | Write: 8.598s | Size: 346.537 MB | Records: 2755242
+[Run  22] Read: 0.720s | [1;32mSort: 0.101s[0m | Write: 7.381s | Size: 346.587 MB | Records: 2753075
+[Run  23] Read: 0.500s | [1;32mSort: 0.101s[0m | Write: 4.562s | Size: 346.557 MB | Records: 2754377
+[Run  24] Read: 0.498s | [1;32mSort: 0.105s[0m | Write: 9.213s | Size: 346.609 MB | Records: 2752101
+[Run  25] Read: 0.684s | [1;32mSort: 0.103s[0m | Write: 7.853s | Size: 346.598 MB | Records: 2752573
+[Run  26] Read: 0.493s | [1;32mSort: 0.101s[0m | Write: 5.149s | Size: 346.603 MB | Records: 2752365
+[Run  27] Read: 0.012s | [1;32mSort: 0.007s[0m | Write: 0.273s | Size: 28.776 MB | Records: 228762
+
+=== OpenMP Generation Stats ===
+Total Time:  187.80 s
+Total Read:  15.32 s (Disk I/O)
+Total Sort:  2.74 s (CPU Parallel)
+Total Write: 169.74 s (Disk I/O)
+Throughput:  49.98 MB/s
+Runs created: 28
+>>> [OpenMP] Phase 2: Merging (K=16, Threads=16)
+=== merge_omp configuration ===
+Total RAM Budget: 16 GB
+Threads (requested): 16
+Threads (actual): 16
+K (requested): 16
+K (actual): 16
+Concurrent streams: 256
+Buffer per stream: 4 MB
+Initial file count: 28
+
+[R0][G1] Merged 12 files -> run__rnd0_1.tmp in 133.43s (31.41 MB/s)
+[R0][G0] Merged 16 files -> run__rnd0_0.tmp in 171.84s (35.20 MB/s)
+Round 0 complete in 171.85 s
+
+[R1][G0] Merged 2 files -> final_omp.dat in 780.12s (13.13 MB/s)
+Round 1 complete in 780.12 s
+
+=== Merge Complete ===
+Output: omp/results_small_test/input_10gb_p256/final_omp.dat
+real 953.86
+user 14.88
+sys 32.46
+Verifying file: omp/results_small_test/input_10gb_p256/final_omp.dat
+File size: 10239.9 MB
+Payload max: 1048576 bytes
+
+  Verified 1M records... (1.3%)
+  Verified 2M records... (2.7%)
+  Verified 3M records... (4.0%)
+  Verified 4M records... (5.4%)
+  Verified 5M records... (6.7%)
+  Verified 6M records... (8.0%)
+  Verified 7M records... (9.4%)
+  Verified 8M records... (10.7%)
+  Verified 9M records... (12.1%)
+  Verified 10M records... (13.4%)
+  Verified 11M records... (14.8%)
+  Verified 12M records... (16.1%)
+  Verified 13M records... (17.4%)
+  Verified 14M records... (18.8%)
+  Verified 15M records... (20.1%)
+  Verified 16M records... (21.5%)
+  Verified 17M records... (22.8%)
+  Verified 18M records... (24.1%)
+  Verified 19M records... (25.5%)
+  Verified 20M records... (26.8%)
+  Verified 21M records... (28.2%)
+  Verified 22M records... (29.5%)
+  Verified 23M records... (30.8%)
+  Verified 24M records... (32.2%)
+  Verified 25M records... (33.5%)
+  Verified 26M records... (34.9%)
+  Verified 27M records... (36.2%)
+  Verified 28M records... (37.6%)
+  Verified 29M records... (38.9%)
+  Verified 30M records... (40.2%)
+  Verified 31M records... (41.6%)
+  Verified 32M records... (42.9%)
+  Verified 33M records... (44.3%)
+  Verified 34M records... (45.6%)
+  Verified 35M records... (46.9%)
+  Verified 36M records... (48.3%)
+  Verified 37M records... (49.6%)
+  Verified 38M records... (51.0%)
+  Verified 39M records... (52.3%)
+  Verified 40M records... (53.6%)
+  Verified 41M records... (55.0%)
+  Verified 42M records... (56.3%)
+  Verified 43M records... (57.7%)
+  Verified 44M records... (59.0%)
+  Verified 45M records... (60.4%)
+  Verified 46M records... (61.7%)
+  Verified 47M records... (63.0%)
+  Verified 48M records... (64.4%)
+  Verified 49M records... (65.7%)
+  Verified 50M records... (67.1%)
+  Verified 51M records... (68.4%)
+  Verified 52M records... (69.7%)
+  Verified 53M records... (71.1%)
+  Verified 54M records... (72.4%)
+  Verified 55M records... (73.8%)
+  Verified 56M records... (75.1%)
+  Verified 57M records... (76.4%)
+  Verified 58M records... (77.8%)
+  Verified 59M records... (79.1%)
+  Verified 60M records... (80.5%)
+  Verified 61M records... (81.8%)
+  Verified 62M records... (83.2%)
+  Verified 63M records... (84.5%)
+  Verified 64M records... (85.8%)
+  Verified 65M records... (87.2%)
+  Verified 66M records... (88.5%)
+  Verified 67M records... (89.9%)
+  Verified 68M records... (91.2%)
+  Verified 69M records... (92.5%)
+  Verified 70M records... (93.9%)
+  Verified 71M records... (95.2%)
+  Verified 72M records... (96.6%)
+  Verified 73M records... (97.9%)
+  Verified 74M records... (99.2%)
+
+=== VERIFICATION SUCCESSFUL ===
+✓ File is properly sorted
+✓ Total records: 74565405
+✓ All record formats valid
+✓ No truncation detected
+✓ Total bytes: 10737288549 (10239.9 MB)
