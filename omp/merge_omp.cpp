@@ -16,11 +16,14 @@
 
 namespace fs = std::filesystem;
 
-static inline void append_bytes(std::vector<char> &buf, const void *src, size_t n)
+static inline void append_bytes(std::vector<char> &buf, size_t &pos, const void *src, size_t n)
 {
-    const size_t old = buf.size();
-    buf.resize(old + n);
-    std::memcpy(buf.data() + old, src, n);
+    if (pos + n > buf.size())
+    {
+        throw std::runtime_error("Output buffer overflow");
+    }
+    std::memcpy(buf.data() + pos, src, n);
+    pos += n;
 }
 
 struct RunCtx
@@ -95,8 +98,8 @@ static uint64_t merge_k_runs(const std::vector<std::string> &inputs,
     }
 
     const size_t OUT_LIMIT = 64 * 1024 * 1024;
-    std::vector<char> out_buf;
-    out_buf.reserve(OUT_LIMIT);
+    std::vector<char> out_buf(OUT_LIMIT);
+    size_t out_pos = 0;
     uint64_t bytes_written = 0;
 
     while (!heap.empty())
@@ -106,19 +109,19 @@ static uint64_t merge_k_runs(const std::vector<std::string> &inputs,
         RunCtx &rc = runs[top.run_idx];
 
         const size_t rec_size = 12 + static_cast<size_t>(rc.cur.len);
-        if (out_buf.size() + rec_size > OUT_LIMIT)
+        if (out_pos + rec_size > OUT_LIMIT)
         {
-            out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+            out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
             if (!out.good())
             {
                 std::cerr << "ERROR: Write failed to output file\n";
                 throw std::runtime_error("Write failed");
             }
-            out_buf.clear();
+            out_pos = 0;
         }
-        append_bytes(out_buf, &rc.cur.key, 8);
-        append_bytes(out_buf, &rc.cur.len, 4);
-        append_bytes(out_buf, rc.cur.payload, rc.cur.len);
+        append_bytes(out_buf, out_pos, &rc.cur.key, 8);
+        append_bytes(out_buf, out_pos, &rc.cur.len, 4);
+        append_bytes(out_buf, out_pos, rc.cur.payload, rc.cur.len);
         bytes_written += rec_size;
 
         rc.has = rc.rr->next(rc.cur);
@@ -126,9 +129,9 @@ static uint64_t merge_k_runs(const std::vector<std::string> &inputs,
             heap.push(HeapNode{rc.cur.key, top.run_idx});
     }
 
-    if (!out_buf.empty())
+    if (out_pos > 0)
     {
-        out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+        out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
         if (!out.good())
         {
             std::cerr << "ERROR: Final write failed\n";

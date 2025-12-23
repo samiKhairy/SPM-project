@@ -19,11 +19,14 @@
         return duration_cast<duration<double>>(high_resolution_clock::now().time_since_epoch()).count();
     }
 
-    static inline void append_bytes(std::vector<char> &out, const void *src, size_t n)
+    static inline void append_bytes(std::vector<char> &out, size_t &pos, const void *src, size_t n)
     {
-        const size_t old = out.size();
-        out.resize(old + n);
-        std::memcpy(out.data() + old, src, n);
+        if (pos + n > out.size())
+        {
+            throw std::runtime_error("Output buffer overflow");
+        }
+        std::memcpy(out.data() + pos, src, n);
+        pos += n;
     }
 
     struct RunCtx
@@ -147,8 +150,8 @@
             return 1;
         }
 
-        std::vector<char> out_buf;
-        out_buf.reserve(out_buf_size);
+        std::vector<char> out_buf(out_buf_size);
+        size_t out_pos = 0;
         uint64_t out_count = 0;
         uint64_t bytes_written = 0;
 
@@ -161,19 +164,19 @@
             RunCtx &rc = *runs[top.run_idx];
 
             const size_t rec_size = 12 + static_cast<size_t>(rc.cur.len);
-            if (out_buf.size() + rec_size > out_buf_size)
+            if (out_pos + rec_size > out_buf_size)
             {
-                out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+                out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
                 if (!out.good())
                 {
                     std::cerr << "ERROR: Write failed to output file\n";
                     return 1;
                 }
-                out_buf.clear();
+                out_pos = 0;
             }
-            append_bytes(out_buf, &rc.cur.key, 8);
-            append_bytes(out_buf, &rc.cur.len, 4);
-            append_bytes(out_buf, rc.cur.payload, rc.cur.len);
+            append_bytes(out_buf, out_pos, &rc.cur.key, 8);
+            append_bytes(out_buf, out_pos, &rc.cur.len, 4);
+            append_bytes(out_buf, out_pos, rc.cur.payload, rc.cur.len);
 
             bytes_written += rec_size;
             out_count++;
@@ -191,9 +194,9 @@
                 heap.push(HeapNode{rc.cur.key, top.run_idx});
         }
 
-        if (!out_buf.empty())
+        if (out_pos > 0)
         {
-            out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+            out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
             if (!out.good())
             {
                 std::cerr << "ERROR: Final write failed\n";

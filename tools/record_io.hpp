@@ -34,9 +34,8 @@ namespace recio
 
     inline void append_bytes(std::vector<char> &buf, const void *src, size_t n)
     {
-        const size_t old = buf.size();
-        buf.resize(old + n);
-        std::memcpy(buf.data() + old, src, n);
+        const auto *bytes = static_cast<const char *>(src);
+        buf.insert(buf.end(), bytes, bytes + n);
     }
 
     class RecordReader

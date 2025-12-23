@@ -33,11 +33,14 @@ static inline double get_time()
     return omp_get_wtime();
 }
 
-static inline void append_bytes(std::vector<char> &buf, const void *src, size_t n)
+static inline void append_bytes(std::vector<char> &buf, size_t &pos, const void *src, size_t n)
 {
-    const size_t old = buf.size();
-    buf.resize(old + n);
-    std::memcpy(buf.data() + old, src, n);
+    if (pos + n > buf.size())
+    {
+        throw std::runtime_error("Output buffer overflow");
+    }
+    std::memcpy(buf.data() + pos, src, n);
+    pos += n;
 }
 
 // -------- OpenMP task mergesort over Meta --------
@@ -124,8 +127,8 @@ int main(int argc, char **argv)
     std::vector<char> payload_buffer;
     std::vector<Meta> meta;
     std::vector<Meta> tmp;
-    std::vector<char> out_buffer;
-    out_buffer.reserve(OUT_BUF_SIZE);
+    std::vector<char> out_buffer(OUT_BUF_SIZE);
+    size_t out_pos = 0;
 
     uint64_t run_id = 0;
     double t_start_global = get_time();
@@ -139,8 +142,7 @@ int main(int argc, char **argv)
     auto consume_record = [&](const recio::RecordView &rec)
     {
         const uint64_t off = payload_buffer.size();
-        payload_buffer.resize(off + rec.len);
-        std::memcpy(payload_buffer.data() + off, rec.payload, rec.len);
+        payload_buffer.insert(payload_buffer.end(), rec.payload, rec.payload + rec.len);
         meta.push_back(Meta{rec.key, off, rec.len});
     };
 
@@ -173,8 +175,7 @@ int main(int argc, char **argv)
 
             if (!meta.empty() && projected > MEM_BUDGET)
             {
-                stash_payload.resize(rv.len);
-                std::memcpy(stash_payload.data(), rv.payload, rv.len);
+                stash_payload.assign(rv.payload, rv.payload + rv.len);
                 stash.key = rv.key;
                 stash.len = rv.len;
                 stash.payload = stash_payload.data();
@@ -212,28 +213,28 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        out_buffer.clear();
+        out_pos = 0;
         for (const auto &m : meta)
         {
             size_t rec_size = 12 + m.len;
-            if (out_buffer.size() + rec_size > OUT_BUF_SIZE)
+            if (out_pos + rec_size > OUT_BUF_SIZE)
             {
-                out.write(out_buffer.data(), out_buffer.size());
+                out.write(out_buffer.data(), out_pos);
                 if (!out.good())
                 {
                     std::cerr << "ERROR: Write failed for run " << run_name << "\n";
                     return 1;
                 }
-                out_buffer.clear();
+                out_pos = 0;
             }
-            append_bytes(out_buffer, &m.key, 8);
-            append_bytes(out_buffer, &m.len, 4);
-            append_bytes(out_buffer, payload_buffer.data() + m.offset, m.len);
+            append_bytes(out_buffer, out_pos, &m.key, 8);
+            append_bytes(out_buffer, out_pos, &m.len, 4);
+            append_bytes(out_buffer, out_pos, payload_buffer.data() + m.offset, m.len);
         }
 
-        if (!out_buffer.empty())
+        if (out_pos > 0)
         {
-            out.write(out_buffer.data(), out_buffer.size());
+            out.write(out_buffer.data(), out_pos);
             if (!out.good())
             {
                 std::cerr << "ERROR: Final write failed for run " << run_name << "\n";
