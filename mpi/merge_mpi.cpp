@@ -39,7 +39,10 @@ struct Meta
 // ==========================================
 // === OPENMP TASK SORT (Re-used from Task 1) [cite: 21]
 // ==========================================
-static constexpr size_t TASK_THRESHOLD = 1 << 14;
+#ifndef TASK_THRESHOLD
+#define TASK_THRESHOLD (1 << 14)
+#endif
+static constexpr size_t TASK_THRESHOLD_VALUE = TASK_THRESHOLD;
 
 static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t m, size_t r)
 {
@@ -57,16 +60,16 @@ static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size
 static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t r)
 {
     const size_t n = r - l;
-    if (n <= TASK_THRESHOLD)
+    if (n <= TASK_THRESHOLD_VALUE)
     {
         std::sort(a.begin() + l, a.begin() + r, [](const Meta &x, const Meta &y)
                   { return x.key < y.key; });
         return;
     }
     const size_t m = l + n / 2;
-#pragma omp task shared(a, tmp) if (n > TASK_THRESHOLD)
+#pragma omp task shared(a, tmp) if (n > TASK_THRESHOLD_VALUE)
     mergesort_task(a, tmp, l, m);
-#pragma omp task shared(a, tmp) if (n > TASK_THRESHOLD)
+#pragma omp task shared(a, tmp) if (n > TASK_THRESHOLD_VALUE)
     mergesort_task(a, tmp, m, r);
 #pragma omp taskwait
     merge_meta(a, tmp, l, m, r);

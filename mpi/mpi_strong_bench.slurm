@@ -19,15 +19,16 @@ export LIBRARY_PATH=$UCX_ROOT/lib:${LIBRARY_PATH:-}
 
 cd $HOME/projectcopy || exit 1
 
+export OMP_PROC_BIND=true
 export OMP_PLACES=cores
-export OMP_PROC_BIND=close
 
 # === CONFIG ===
 TOTAL_GB=16
 OUT_PREFIX=mpi/results_strong
-NODES_LIST=(1 2 4 8)
-THREADS_LIST=(4 8)
-PAYLOADS=(p256 p8192)
+TOTAL_CORES=32
+RANKS_LIST=(32 16 8 4 2)
+THREADS_LIST=(1 2 4 8 16)
+PAYLOADS=(p256 p8192 pskew)
 INPUT_TEMPLATE=inputs/input_%sgb_%s.dat
 
 mkdir -p "$OUT_PREFIX"
@@ -35,13 +36,21 @@ mkdir -p "$OUT_PREFIX"
 echo ">>> [MPI Strong] Total input: ${TOTAL_GB}GB"
 which mpirun
 
-for nodes in "${NODES_LIST[@]}"; do
-  for payload in "${PAYLOADS[@]}"; do
-    input_file=$(printf "$INPUT_TEMPLATE" "$TOTAL_GB" "$payload")
-    for threads in "${THREADS_LIST[@]}"; do
-      export OMP_NUM_THREADS="$threads"
-      echo ">>> [MPI Strong] nodes=$nodes threads=$threads input=$input_file"
-      time -p mpirun -np "$nodes" --map-by "node:PE=${threads}" ./mpi/bin/merge_mpi "$input_file" "$OUT_PREFIX"
-    done
+for payload in "${PAYLOADS[@]}"; do
+  input_file=$(printf "$INPUT_TEMPLATE" "$TOTAL_GB" "$payload")
+  if [[ ! -f "$input_file" ]]; then
+    echo ">>> [MPI Strong] Skipping missing input: $input_file"
+    continue
+  fi
+  for i in "${!RANKS_LIST[@]}"; do
+    ranks="${RANKS_LIST[$i]}"
+    threads="${THREADS_LIST[$i]}"
+    if (( ranks * threads != TOTAL_CORES )); then
+      echo ">>> [MPI Strong] Skipping invalid shape ranks=$ranks threads=$threads"
+      continue
+    fi
+    export OMP_NUM_THREADS="$threads"
+    echo ">>> [MPI Strong] ranks=$ranks threads=$threads input=$input_file"
+    time -p mpirun -np "$ranks" --map-by "node:PE=${threads}" ./mpi/bin/merge_mpi "$input_file" "$OUT_PREFIX"
   done
 done
