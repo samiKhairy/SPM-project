@@ -41,11 +41,14 @@ struct Task
     std::vector<Meta> meta;
 };
 
-static inline void append_bytes_local(std::vector<char> &buf, const void *src, size_t n)
+static inline void append_bytes_local(std::vector<char> &buf, size_t &pos, const void *src, size_t n)
 {
-    const size_t old = buf.size();
-    buf.resize(old + n);
-    std::memcpy(buf.data() + old, src, n);
+    if (pos + n > buf.size())
+    {
+        throw std::runtime_error("Output buffer overflow");
+    }
+    std::memcpy(buf.data() + pos, src, n);
+    pos += n;
 }
 
 // ---------------------- Helper Nodes ----------------------
@@ -106,8 +109,7 @@ struct Reader : ff::ff_node
                 auto consume_record = [&](const recio::RecordView &rec)
                 {
                     uint64_t off = t->payload_buffer.size();
-                    t->payload_buffer.resize(off + rec.len);
-                    std::memcpy(t->payload_buffer.data() + off, rec.payload, rec.len);
+                    t->payload_buffer.insert(t->payload_buffer.end(), rec.payload, rec.payload + rec.len);
                     t->meta.push_back({rec.key, off, rec.len});
                 };
 
@@ -128,8 +130,7 @@ struct Reader : ff::ff_node
                     uint64_t projected = memory_used() + rv.len + sizeof(Meta);
                     if (!t->meta.empty() && projected > task_budget)
                     {
-                        stash_payload.resize(rv.len);
-                        std::memcpy(stash_payload.data(), rv.payload, rv.len);
+                        stash_payload.assign(rv.payload, rv.payload + rv.len);
                         stash.key = rv.key;
                         stash.len = rv.len;
                         stash.payload = stash_payload.data();
@@ -187,7 +188,7 @@ struct Writer : ff::ff_node
 
     Writer(std::string prefix) : run_prefix(std::move(prefix))
     {
-        out_buffer.reserve(16 * 1024 * 1024);
+        out_buffer.resize(16 * 1024 * 1024);
     }
 
     void *svc(void *task) override
@@ -200,25 +201,25 @@ struct Writer : ff::ff_node
             if (!out)
                 throw std::runtime_error("Cannot create file: " + fname);
 
-            out_buffer.clear();
             const size_t OUT_LIMIT = 16 * 1024 * 1024;
+            size_t out_pos = 0;
 
             for (const auto &m : t->meta)
             {
                 size_t rec_size = 12 + m.len;
-                if (out_buffer.size() + rec_size > OUT_LIMIT)
+                if (out_pos + rec_size > OUT_LIMIT)
                 {
-                    out.write(out_buffer.data(), out_buffer.size());
-                    out_buffer.clear();
+                    out.write(out_buffer.data(), out_pos);
+                    out_pos = 0;
                 }
-                append_bytes_local(out_buffer, &m.key, 8);
-                append_bytes_local(out_buffer, &m.len, 4);
-                append_bytes_local(out_buffer, t->payload_buffer.data() + m.offset, m.len);
+                append_bytes_local(out_buffer, out_pos, &m.key, 8);
+                append_bytes_local(out_buffer, out_pos, &m.len, 4);
+                append_bytes_local(out_buffer, out_pos, t->payload_buffer.data() + m.offset, m.len);
             }
 
-            if (!out_buffer.empty())
+            if (out_pos > 0)
             {
-                out.write(out_buffer.data(), out_buffer.size());
+                out.write(out_buffer.data(), out_pos);
             }
 
             std::cout << "Wrote run: " << fname << " (" << t->meta.size() << " recs)\n";

@@ -39,11 +39,14 @@ static inline uint64_t gb_to_bytes(uint64_t gb)
     return gb * 1024ULL * 1024ULL * 1024ULL;
 }
 
-static inline void append_bytes(std::vector<char> &buf, const void *src, size_t n)
+static inline void append_bytes(std::vector<char> &buf, size_t &pos, const void *src, size_t n)
 {
-    const size_t old = buf.size();
-    buf.resize(old + n);
-    std::memcpy(buf.data() + old, src, n);
+    if (pos + n > buf.size())
+    {
+        throw std::runtime_error("Output buffer overflow");
+    }
+    std::memcpy(buf.data() + pos, src, n);
+    pos += n;
 }
 
 // Robustly parse run id from filename: base + digits + ".dat"
@@ -169,8 +172,8 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
     if (!out)
         throw std::runtime_error("Cannot open output: " + output);
 
-    std::vector<char> out_buf;
-    out_buf.reserve(outbuf_bytes);
+    std::vector<char> out_buf(outbuf_bytes);
+    size_t out_pos = 0;
 
     while (!heap.empty())
     {
@@ -179,23 +182,23 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
         RunCtx &rc = runs[top.run_idx];
 
         const size_t rec_sz = 12 + static_cast<size_t>(rc.cur.len);
-        if (out_buf.size() + rec_sz > outbuf_bytes)
+        if (out_pos + rec_sz > outbuf_bytes)
         {
-            out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
-            out_buf.clear();
+            out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
+            out_pos = 0;
         }
-        append_bytes(out_buf, &rc.cur.key, 8);
-        append_bytes(out_buf, &rc.cur.len, 4);
-        append_bytes(out_buf, rc.cur.payload, rc.cur.len);
+        append_bytes(out_buf, out_pos, &rc.cur.key, 8);
+        append_bytes(out_buf, out_pos, &rc.cur.len, 4);
+        append_bytes(out_buf, out_pos, rc.cur.payload, rc.cur.len);
 
         rc.has = rc.rr->next(rc.cur);
         if (rc.has)
             heap.push({rc.cur.key, top.run_idx});
     }
 
-    if (!out_buf.empty())
+    if (out_pos > 0)
     {
-        out.write(out_buf.data(), static_cast<std::streamsize>(out_buf.size()));
+        out.write(out_buf.data(), static_cast<std::streamsize>(out_pos));
     }
 
     out.close();
