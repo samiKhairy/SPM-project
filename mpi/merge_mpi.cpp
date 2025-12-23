@@ -14,23 +14,12 @@
 #include <cstring>
 #include <filesystem>
 #include <memory>
-#include <queue>
 
-#include "../tools/record_io.hpp"
+#include "../tools/common_sort.hpp"
 
 namespace fs = std::filesystem;
 
 // --- Config ---
-// 256MB chunks for efficient sorting batches
-static const uint64_t SORT_CHUNK_MEM_MB = 256;
-static const uint64_t MEM_BUDGET_BYTES = SORT_CHUNK_MEM_MB * 1024ULL * 1024ULL;
-
-struct Meta
-{
-    uint64_t key;
-    uint64_t offset;
-    uint32_t len;
-};
 
 // ==========================================
 // === OpenMP task sort
@@ -40,7 +29,7 @@ struct Meta
 #endif
 static constexpr size_t TASK_THRESHOLD_VALUE = TASK_THRESHOLD;
 
-static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t m, size_t r)
+static inline void merge_meta(std::vector<sortutil::Meta> &a, std::vector<sortutil::Meta> &tmp, size_t l, size_t m, size_t r)
 {
     size_t i = l, j = m, k = l;
     while (i < m && j < r)
@@ -53,12 +42,12 @@ static inline void merge_meta(std::vector<Meta> &a, std::vector<Meta> &tmp, size
         a[x] = tmp[x];
 }
 
-static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t l, size_t r)
+static void mergesort_task(std::vector<sortutil::Meta> &a, std::vector<sortutil::Meta> &tmp, size_t l, size_t r)
 {
     const size_t n = r - l;
     if (n <= TASK_THRESHOLD_VALUE)
     {
-        std::sort(a.begin() + l, a.begin() + r, [](const Meta &x, const Meta &y)
+        std::sort(a.begin() + l, a.begin() + r, [](const sortutil::Meta &x, const sortutil::Meta &y)
                   { return x.key < y.key; });
         return;
     }
@@ -176,18 +165,21 @@ std::vector<uint64_t> find_splitters_fast(const std::string &path, int n_ranks)
 }
 
 // ==========================================
-// === FIX 3: GENERATION WITH APPEND (Handles Fix)
+// === Partitioned generation with append
 // ==========================================
 
 void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_t end,
                                int my_rank, int n_ranks,
                                const std::vector<uint64_t> &splitters,
-                               const std::string &temp_dir)
+                               const std::string &temp_dir,
+                               const sortutil::RunBufferPlan &plan,
+                               uint32_t payload_max)
 {
 
     // 1. Open ONE file per destination rank (Append Mode)
     std::vector<std::unique_ptr<std::ofstream>> out_files(n_ranks);
     std::vector<std::vector<char>> write_buffers(n_ranks);
+    const size_t write_buf_size = std::min<size_t>(plan.out_buf_size, 4ull << 20);
 
     for (int i = 0; i < n_ranks; ++i)
     {
@@ -195,18 +187,18 @@ void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_
         std::string name = temp_dir + "/dest_" + std::to_string(i) + "_src_" + std::to_string(my_rank) + ".dat";
         // Append mode is crucial here
         out_files[i] = std::make_unique<std::ofstream>(name, std::ios::binary | std::ios::app);
-        write_buffers[i].reserve(1024 * 1024); // 1MB buffer per file
+        write_buffers[i].reserve(write_buf_size);
     }
 
     // Input Reader
     std::ifstream in(input, std::ios::binary);
     in.seekg(start);
-    recio::RecordReader rr(in, 32 * 1024 * 1024, recio::HARD_PAYLOAD_MAX);
+    recio::RecordReader rr(in, plan.in_buf_size, payload_max);
     recio::RecordView rv;
 
     std::vector<char> payload_buf;
-    std::vector<Meta> meta;
-    std::vector<Meta> tmp; // For sorting
+    std::vector<sortutil::Meta> meta;
+    std::vector<sortutil::Meta> tmp;
 
     uint64_t bytes_read_total = 0;
     uint64_t chunk_limit = end - start;
@@ -239,7 +231,7 @@ void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_
             {
                 uint64_t split_val = splitters[dest];
                 auto it = std::upper_bound(meta.begin() + current_idx, meta.end(), split_val,
-                                           [](uint64_t val, const Meta &m)
+                                           [](uint64_t val, const sortutil::Meta &m)
                                            { return val < m.key; });
                 end_idx = std::distance(meta.begin(), it);
             }
@@ -284,11 +276,8 @@ void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_
     {
         size_t rec_sz = 12 + rv.len;
 
-        // === FIX 2: MEMORY CHECK WITH META OVERHEAD ===
-        // We must count the vector<Meta> size too!
-        size_t meta_overhead = (meta.size() + 1) * sizeof(Meta);
-
-        if (payload_buf.size() + rec_sz + meta_overhead > MEM_BUDGET_BYTES)
+        const size_t meta_overhead = (meta.size() + 1) * sizeof(sortutil::Meta);
+        if (payload_buf.size() + rec_sz + meta_overhead > plan.payload_budget)
         {
             flush_batch();
         }
@@ -309,7 +298,12 @@ void generate_partitioned_runs(const std::string &input, uint64_t start, uint64_
 // === PHASE 3: K-WAY MERGE
 // ==========================================
 
-void merge_local_files(const std::string &temp_dir, int my_rank, int n_ranks, const std::string &output_file)
+void merge_local_files(const std::string &temp_dir,
+                       int my_rank,
+                       int n_ranks,
+                       const std::string &output_file,
+                       size_t mem_budget_bytes,
+                       uint32_t payload_max)
 {
     // Identify my input files: dest_<MY_RANK>_src_<0..N>.dat
     std::vector<std::string> inputs;
@@ -328,70 +322,8 @@ void merge_local_files(const std::string &temp_dir, int my_rank, int n_ranks, co
         return;
     }
 
-    // Setup Heap
-    struct Ctx
-    {
-        std::ifstream in;
-        std::unique_ptr<recio::RecordReader> rr;
-        recio::RecordView cur;
-        bool has;
-    };
-
-    // Limit buffers to avoid OOM in merge phase
-    // 24GB available / N inputs
-    size_t ram_budget = 24ULL * 1024 * 1024 * 1024;
-    size_t buf_per_file = ram_budget / (inputs.size() + 1); // +1 for output
-    if (buf_per_file > 64 * 1024 * 1024)
-        buf_per_file = 64 * 1024 * 1024; // Cap at 64MB
-    if (buf_per_file < 1 * 1024 * 1024)
-        buf_per_file = 1 * 1024 * 1024; // Min 1MB
-
-    std::vector<Ctx> ctx(inputs.size());
-    using Node = std::pair<uint64_t, int>;
-    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> heap;
-
-    for (size_t i = 0; i < inputs.size(); ++i)
-    {
-        ctx[i].in.open(inputs[i], std::ios::binary);
-        ctx[i].rr = std::make_unique<recio::RecordReader>(ctx[i].in, buf_per_file, recio::HARD_PAYLOAD_MAX);
-        ctx[i].has = ctx[i].rr->next(ctx[i].cur);
-        if (ctx[i].has)
-            heap.push({ctx[i].cur.key, (int)i});
-    }
-
-    std::ofstream out(output_file, std::ios::binary);
-    std::vector<char> out_buf;
-    out_buf.reserve(64 * 1024 * 1024);
-
-    while (!heap.empty())
-    {
-        auto top = heap.top();
-        heap.pop();
-        int idx = top.second;
-        auto &c = ctx[idx];
-
-        // Buffer Output
-        size_t rec_sz = 12 + c.cur.len;
-        if (out_buf.size() + rec_sz > out_buf.capacity())
-        {
-            out.write(out_buf.data(), out_buf.size());
-            out_buf.clear();
-        }
-
-        size_t old = out_buf.size();
-        out_buf.resize(old + rec_sz);
-        char *ptr = out_buf.data() + old;
-        std::memcpy(ptr, &c.cur.key, 8);
-        std::memcpy(ptr + 8, &c.cur.len, 4);
-        std::memcpy(ptr + 12, c.cur.payload, c.cur.len);
-
-        // Advance
-        c.has = c.rr->next(c.cur);
-        if (c.has)
-            heap.push({c.cur.key, idx});
-    }
-    if (!out_buf.empty())
-        out.write(out_buf.data(), out_buf.size());
+    const sortutil::MergeBufferPlan plan = sortutil::plan_merge_buffers(mem_budget_bytes, inputs.size());
+    sortutil::merge_k_runs(inputs, output_file, plan.in_buf_size, plan.out_buf_size, payload_max);
 
     // Clean temp files
     for (const auto &f : inputs)
@@ -403,7 +335,10 @@ static std::string make_tree_temp(const std::string &temp_dir, int rank, int ste
     return temp_dir + "/tree_r" + std::to_string(rank) + "_s" + std::to_string(step) + "_" + suffix + ".dat";
 }
 
-static void merge_files(const std::vector<std::string> &inputs, const std::string &output_file)
+static void merge_files(const std::vector<std::string> &inputs,
+                        const std::string &output_file,
+                        size_t mem_budget_bytes,
+                        uint32_t payload_max)
 {
     if (inputs.empty())
         throw std::runtime_error("merge_files: empty input list");
@@ -414,75 +349,8 @@ static void merge_files(const std::vector<std::string> &inputs, const std::strin
         return;
     }
 
-    struct Ctx
-    {
-        std::ifstream in;
-        std::unique_ptr<recio::RecordReader> rr;
-        recio::RecordView cur;
-        bool has = false;
-    };
-
-    size_t ram_budget = 24ULL * 1024 * 1024 * 1024;
-    size_t buf_per_file = ram_budget / (inputs.size() + 1);
-    if (buf_per_file > 64 * 1024 * 1024)
-        buf_per_file = 64 * 1024 * 1024;
-    if (buf_per_file < 1 * 1024 * 1024)
-        buf_per_file = 1 * 1024 * 1024;
-
-    std::vector<Ctx> ctx(inputs.size());
-    using Node = std::pair<uint64_t, int>;
-    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> heap;
-
-    for (size_t i = 0; i < inputs.size(); ++i)
-    {
-        ctx[i].in.open(inputs[i], std::ios::binary);
-        if (!ctx[i].in)
-            throw std::runtime_error("Cannot open merge input: " + inputs[i]);
-        ctx[i].rr = std::make_unique<recio::RecordReader>(ctx[i].in, buf_per_file, recio::HARD_PAYLOAD_MAX);
-        ctx[i].has = ctx[i].rr->next(ctx[i].cur);
-        if (ctx[i].has)
-            heap.push({ctx[i].cur.key, (int)i});
-    }
-
-    std::ofstream out(output_file, std::ios::binary);
-    if (!out)
-        throw std::runtime_error("Cannot open merge output: " + output_file);
-
-    std::vector<char> out_buf;
-    out_buf.reserve(64 * 1024 * 1024);
-
-    while (!heap.empty())
-    {
-        auto top = heap.top();
-        heap.pop();
-        int idx = top.second;
-        auto &c = ctx[idx];
-
-        size_t rec_sz = 12 + c.cur.len;
-        if (out_buf.size() + rec_sz > out_buf.capacity())
-        {
-            out.write(out_buf.data(), out_buf.size());
-            out_buf.clear();
-        }
-
-        size_t old = out_buf.size();
-        out_buf.resize(old + rec_sz);
-        char *ptr = out_buf.data() + old;
-        std::memcpy(ptr, &c.cur.key, 8);
-        std::memcpy(ptr + 8, &c.cur.len, 4);
-        std::memcpy(ptr + 12, c.cur.payload, c.cur.len);
-
-        c.has = c.rr->next(c.cur);
-        if (c.has)
-            heap.push({c.cur.key, idx});
-    }
-
-    if (!out_buf.empty())
-        out.write(out_buf.data(), out_buf.size());
-
-    out.close();
-    if (!out.good())
-        throw std::runtime_error("Failed to close output: " + output_file);
+    const sortutil::MergeBufferPlan plan = sortutil::plan_merge_buffers(mem_budget_bytes, inputs.size());
+    sortutil::merge_k_runs(inputs, output_file, plan.in_buf_size, plan.out_buf_size, payload_max);
 }
 
 static void send_file_nonblocking(const std::string &path, int dest, int tag_base)
@@ -605,16 +473,20 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    if (argc < 3)
+    if (argc < 4)
     {
         if (rank == 0)
-            std::cerr << "Usage: mpirun ./mpi_distributed_sort <input> <output_prefix>\n";
+            std::cerr << "Usage: mpirun ./mpi_distributed_sort <input> <output_prefix> <mem_budget_mb> [payload_max]\n";
         MPI_Finalize();
         return 1;
     }
 
     std::string input_file = argv[1];
     std::string output_prefix = argv[2];
+    const uint64_t mem_budget_mb = std::stoull(argv[3]);
+    uint32_t payload_max = recio::HARD_PAYLOAD_MAX;
+    if (argc > 4)
+        payload_max = static_cast<uint32_t>(std::stoul(argv[4]));
     std::string temp_dir = fs::path(output_prefix).parent_path().string() + "/mpi_partitions";
 
     // --- SETUP ---
@@ -646,10 +518,13 @@ int main(int argc, char **argv)
     splitters.resize(n_splitters);
     MPI_Bcast(splitters.data(), n_splitters, MPI_UINT64_T, 0, MPI_COMM_WORLD);
 
+    const size_t mem_budget_bytes = mem_budget_mb * 1024ULL * 1024ULL;
+    const sortutil::RunBufferPlan run_plan = sortutil::plan_run_buffers(mem_budget_bytes, payload_max);
+
     // --- PHASE 2: GENERATE & PARTITION (Parallel) ---
     double t_map_start = MPI_Wtime();
     generate_partitioned_runs(input_file, file_offsets[rank], file_offsets[rank + 1],
-                              rank, size, splitters, temp_dir);
+                              rank, size, splitters, temp_dir, run_plan, payload_max);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0)
@@ -658,7 +533,7 @@ int main(int argc, char **argv)
     // --- PHASE 3: LOCAL MERGE (Parallel) ---
     double t_reduce_start = MPI_Wtime();
     std::string local_out = output_prefix + "rank_" + std::to_string(rank) + ".dat";
-    merge_local_files(temp_dir, rank, size, local_out);
+    merge_local_files(temp_dir, rank, size, local_out, mem_budget_bytes, payload_max);
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (rank == 0)
@@ -684,7 +559,7 @@ int main(int argc, char **argv)
                 recv_file_nonblocking(recv_file, partner, tag_base);
 
                 const std::string merged_file = make_tree_temp(temp_dir, rank, step, "merged");
-                merge_files({current_file, recv_file}, merged_file);
+                merge_files({current_file, recv_file}, merged_file, mem_budget_bytes, payload_max);
 
                 if (current_is_temp && fs::exists(current_file))
                     fs::remove(current_file);

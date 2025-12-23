@@ -9,14 +9,7 @@
 #include <stdexcept>
 #include <iomanip>
 
-#include "../tools/record_io.hpp"
-
-struct Meta
-{
-    uint64_t key;
-    uint64_t offset;
-    uint32_t len;
-};
+#include "../tools/common_sort.hpp"
 
 // --- Statistics Wrapper ---
 struct Stats
@@ -43,19 +36,11 @@ static inline void append_bytes(std::vector<char> &buf, size_t &pos, const void 
     pos += n;
 }
 
-static inline size_t clamp(size_t v, size_t lo, size_t hi)
-{
-    if (v < lo)
-        return lo;
-    if (v > hi)
-        return hi;
-    return v;
-}
 int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        std::cerr << "Usage: ./run_gen_seq <input_file> <mem_budget_mb> <run_prefix> [payload_max]\n";
+        std::cerr << "Usage: ./run_gen_seq <input_file> <mem_budget_mb> <run_prefix> [payload_max] [workers]\n";
         return 1;
     }
 
@@ -67,25 +52,21 @@ int main(int argc, char **argv)
     if (argc >= 5)
         payload_max = static_cast<uint32_t>(std::stoul(argv[4]));
 
-    const size_t MEM_BUDGET = mem_budget_mb * 1024ull * 1024ull;
-
-    // Policy-based buffer sizing
-    const size_t IN_BUF_SIZE = clamp(MEM_BUDGET / 4, 8ull << 20, 128ull << 20);  // 25%
-    const size_t OUT_BUF_SIZE = clamp(MEM_BUDGET / 10, 8ull << 20, 64ull << 20); // 10%
-    const size_t SAFETY_GAP = MEM_BUDGET / 20;                                   // 5%
-
-    if (MEM_BUDGET <= IN_BUF_SIZE + OUT_BUF_SIZE + SAFETY_GAP + payload_max)
+    if (argc >= 6)
     {
-        throw std::runtime_error("Memory budget too small for buffers + safety");
+        const int workers = std::stoi(argv[5]);
+        if (workers <= 0)
+            throw std::runtime_error("workers must be > 0");
     }
 
-    const size_t PAYLOAD_BUDGET =
-        MEM_BUDGET - IN_BUF_SIZE - OUT_BUF_SIZE - SAFETY_GAP - payload_max;
+    const size_t MEM_BUDGET = mem_budget_mb * 1024ull * 1024ull;
+    const sortutil::RunBufferPlan plan = sortutil::plan_run_buffers(MEM_BUDGET, payload_max);
+    const size_t PAYLOAD_BUDGET = plan.payload_budget;
 
     std::cout << "=== Sequential Run Generation ===\n";
     std::cout << "Memory budget: " << mem_budget_mb << " MB\n";
-    std::cout << "Input buffer: " << (IN_BUF_SIZE / 1024.0 / 1024.0) << " MB\n";
-    std::cout << "Output buffer: " << (OUT_BUF_SIZE / 1024.0 / 1024.0) << " MB\n\n";
+    std::cout << "Input buffer: " << (plan.in_buf_size / 1024.0 / 1024.0) << " MB\n";
+    std::cout << "Output buffer: " << (plan.out_buf_size / 1024.0 / 1024.0) << " MB\n\n";
 
     std::ifstream in(input_path, std::ios::binary);
     if (!in)
@@ -94,7 +75,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    recio::RecordReader rr(in, IN_BUF_SIZE, payload_max);
+    recio::RecordReader rr(in, plan.in_buf_size, payload_max);
     recio::RecordView rv;
 
     // One-record stash to handle budget boundary
@@ -105,11 +86,11 @@ int main(int argc, char **argv)
     std::vector<char> payload_buffer;
     payload_buffer.reserve(PAYLOAD_BUDGET); // Pre-allocate full budget capacity
 
-    std::vector<Meta> meta;
+    std::vector<sortutil::Meta> meta;
     // Estimate meta capacity assuming an average record size (e.g., 32 bytes payload)
     meta.reserve(PAYLOAD_BUDGET / (sizeof(Meta) + 32));
 
-    std::vector<char> out_buffer(OUT_BUF_SIZE);
+    std::vector<char> out_buffer(plan.out_buf_size);
     size_t out_pos = 0;
 
     uint64_t run_id = 0;
@@ -118,14 +99,14 @@ int main(int argc, char **argv)
     auto memory_used = [&]() -> uint64_t
     {
         return static_cast<uint64_t>(payload_buffer.size()) +
-               static_cast<uint64_t>(meta.size()) * sizeof(Meta);
+               static_cast<uint64_t>(meta.size()) * sizeof(sortutil::Meta);
     };
 
     auto consume_record = [&](const recio::RecordView &rec)
     {
         const uint64_t off = payload_buffer.size();
         payload_buffer.insert(payload_buffer.end(), rec.payload, rec.payload + rec.len);
-        meta.push_back(Meta{rec.key, off, rec.len});
+        meta.push_back(sortutil::Meta{rec.key, off, rec.len});
     };
 
     while (true)
@@ -154,9 +135,9 @@ int main(int argc, char **argv)
                 break; // EOF
 
             size_t projected = 0;
-            if (__builtin_add_overflow(payload_buffer.size(), meta.size() * sizeof(Meta), &projected) ||
+            if (__builtin_add_overflow(payload_buffer.size(), meta.size() * sizeof(sortutil::Meta), &projected) ||
                 __builtin_add_overflow(projected, rv.len, &projected) ||
-                __builtin_add_overflow(projected, sizeof(Meta), &projected))
+                __builtin_add_overflow(projected, sizeof(sortutil::Meta), &projected))
             {
                 throw std::runtime_error("Memory accounting overflow");
             }
