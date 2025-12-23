@@ -1,10 +1,6 @@
 /**
  * mpi_distributed_sort.cpp
- * Optimized Distributed Sort combining MPI + OpenMP [cite: 20]
- * * Fixes applied:
- * 1. Header-only scanning for splitters (IO Bottleneck Fix)
- * 2. Meta struct overhead accounting (Memory Stability Fix)
- * 3. Appending to per-rank files (File Handle Scalability Fix)
+ * Distributed sort using MPI with OpenMP for local sorting.
  */
 
 #include <mpi.h>
@@ -37,7 +33,7 @@ struct Meta
 };
 
 // ==========================================
-// === OPENMP TASK SORT (Re-used from Task 1) [cite: 21]
+// === OpenMP task sort
 // ==========================================
 #ifndef TASK_THRESHOLD
 #define TASK_THRESHOLD (1 << 14)
@@ -76,7 +72,7 @@ static void mergesort_task(std::vector<Meta> &a, std::vector<Meta> &tmp, size_t 
 }
 
 // ==========================================
-// === FIX 1: HEADER-ONLY SCANNERS
+// === Header-only scanners
 // ==========================================
 
 // Quickly scan file to find chunk boundaries for each rank

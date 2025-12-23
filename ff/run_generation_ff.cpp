@@ -4,9 +4,6 @@
  *
  * Architecture:
  * [Reader] ---> [Farm (Workers) -> Collector] ---> [Writer]
- *
- * FIX: 'ff_node' is abstract. We created a concrete 'Identity' node
- * to act as the Collector.
  */
 
 #include <algorithm>
@@ -53,7 +50,7 @@ static inline void append_bytes_local(std::vector<char> &buf, size_t &pos, const
 
 // ---------------------- Helper Nodes ----------------------
 
-// FIX: Concrete Identity Node for the Collector
+// Concrete identity node for the collector.
 struct Identity : ff::ff_node
 {
     void *svc(void *task) override
@@ -238,7 +235,6 @@ struct Writer : ff::ff_node
 
 int main(int argc, char **argv)
 {
-    // UPDATE usage message
     if (argc < 4)
     {
         std::cerr << "Usage: ./run_gen_ff <input> <MEM_BUDGET_MB> <run_prefix> [n_workers] [payload_max]\n";
@@ -246,7 +242,7 @@ int main(int argc, char **argv)
     }
 
     const std::string input = argv[1];
-    // FIX: Read as MB, strictly matching OpenMP
+    // Memory budget is specified in MB for consistency across modes.
     const uint64_t mem_budget_mb = std::stoull(argv[2]);
     const std::string prefix = argv[3];
     const int n_workers = (argc > 4) ? std::stoi(argv[4]) : 4;
@@ -261,8 +257,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // FIX: Direct assignment. No division.
-    // Every worker gets exactly 128MB (or whatever is passed)
+    // Each worker gets the full budget value specified on the CLI.
     uint64_t task_budget = mem_budget_mb * 1024ULL * 1024ULL;
     std::cout << "FastFlow RunGen Config:\n"
               << "  Budget/Worker: " << mem_budget_mb << " MB\n"
