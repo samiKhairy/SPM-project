@@ -1,6 +1,6 @@
 /**
  * merge_ff.cpp
- * Phase 2: Multi-round K-way merge using FastFlow ParallelFor
+ * Phase 2: Divide & Conquer merge using FastFlow ff_DC
  *
  * Usage:
  * ./merge_ff <run_prefix> <final_out> <K> <TOTAL_MEM_GB> <workers> [payload_max]
@@ -22,10 +22,11 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <atomic>
 
 // FastFlow
 #include <ff/ff.hpp>
-#include <ff/parallel_for.hpp>
+#include <ff/dc.hpp>
 
 // Project IO
 #include "../tools/record_io.hpp"
@@ -206,6 +207,100 @@ static void merge_k_runs(const std::vector<std::string> &inputs,
         throw std::runtime_error("Failed to close output cleanly: " + output);
 }
 
+// ------------------ divide & conquer ------------------
+
+struct DcConfig
+{
+    size_t leaf_k = 2;
+    size_t inbuf = 0;
+    size_t outbuf = 0;
+    uint32_t payload_max = 0;
+    std::string temp_dir;
+    std::string final_out;
+    std::atomic<uint64_t> *temp_id = nullptr;
+};
+
+struct MergeTask
+{
+    std::vector<std::string> inputs;
+    std::string output;
+    bool owns_output = false;
+    const DcConfig *cfg = nullptr;
+};
+
+static std::string make_temp_path(const DcConfig &cfg)
+{
+    const uint64_t id = cfg.temp_id->fetch_add(1, std::memory_order_relaxed);
+    fs::path dir(cfg.temp_dir.empty() ? "." : cfg.temp_dir);
+    return (dir / ("ffdc_tmp_" + std::to_string(id) + ".dat")).string();
+}
+
+static void dc_divide(MergeTask *t, std::vector<MergeTask *> &children)
+{
+    const size_t mid = t->inputs.size() / 2;
+    std::vector<std::string> left(t->inputs.begin(), t->inputs.begin() + mid);
+    std::vector<std::string> right(t->inputs.begin() + mid, t->inputs.end());
+
+    children.push_back(new MergeTask{std::move(left), make_temp_path(*t->cfg), true, t->cfg});
+    children.push_back(new MergeTask{std::move(right), make_temp_path(*t->cfg), true, t->cfg});
+}
+
+static bool dc_cond(MergeTask *t)
+{
+    return t->inputs.size() <= t->cfg->leaf_k;
+}
+
+static void dc_base(MergeTask *t)
+{
+    if (t->inputs.empty())
+        throw std::runtime_error("dc_base: empty input list");
+
+    if (t->inputs.size() == 1)
+    {
+        const std::string &single = t->inputs.front();
+        if (fs::absolute(single) == fs::absolute(t->output))
+        {
+            t->owns_output = false;
+            return;
+        }
+        if (t->output == t->cfg->final_out)
+        {
+            fs::rename(single, t->output);
+            t->owns_output = false;
+            return;
+        }
+        t->output = single;
+        t->owns_output = false;
+        return;
+    }
+
+    merge_k_runs(t->inputs, t->output, t->cfg->inbuf, t->cfg->outbuf, t->cfg->payload_max);
+}
+
+static void dc_combine(MergeTask *t, std::vector<MergeTask *> &children)
+{
+    if (children.empty())
+        return;
+
+    std::vector<std::string> outputs;
+    outputs.reserve(children.size());
+    for (const auto *c : children)
+        outputs.push_back(c->output);
+
+    merge_k_runs(outputs, t->output, t->cfg->inbuf, t->cfg->outbuf, t->cfg->payload_max);
+
+    for (auto *c : children)
+    {
+        if (c->owns_output && fs::absolute(c->output) != fs::absolute(t->cfg->final_out))
+        {
+            std::error_code ec;
+            fs::remove(c->output, ec);
+        }
+        delete c;
+    }
+    children.clear();
+}
+
 // ------------------ main orchestration ------------------
 
 int main(int argc, char **argv)
@@ -272,62 +367,29 @@ int main(int argc, char **argv)
                   << "  inbuf/run:   " << (inbuf / 1024 / 1024) << " MB\n"
                   << "  outbuf:      " << (outbuf / 1024 / 1024) << " MB\n";
 
-        ff::ParallelFor pfor(workers);
+        std::atomic<uint64_t> temp_id{0};
+        fs::path pref(prefix);
+        fs::path dir = pref.parent_path();
+        if (dir.empty())
+            dir = ".";
 
-        int round = 0;
-        while (files.size() > 1)
-        {
-            // Group into chunks of K
-            const size_t groups = (files.size() + static_cast<size_t>(K) - 1) / static_cast<size_t>(K);
-            std::vector<std::string> next(groups);
+        DcConfig cfg{
+            static_cast<size_t>(K),
+            inbuf,
+            outbuf,
+            payload_max,
+            dir.string(),
+            final_out,
+            &temp_id};
 
-            fs::path pref(prefix);
-            fs::path dir = pref.parent_path();
-            if (dir.empty())
-                dir = ".";
+        MergeTask root{files, final_out, false, &cfg};
 
-            // Parallel Merge of Groups
-            pfor.parallel_for(0, (long)groups, 1, 0, [&](const long gi)
-                              {
-                const size_t start = static_cast<size_t>(gi) * static_cast<size_t>(K);
-                const size_t end = std::min(files.size(), start + static_cast<size_t>(K));
-
-                std::vector<std::string> ins;
-                ins.reserve(end - start);
-                for (size_t j = start; j < end; ++j) ins.push_back(files[j]);
-
-                const bool last_round_single = (groups == 1);
-                std::string out_name;
-                
-                if (last_round_single) {
-                    out_name = final_out;
-                } else {
-                    out_name = (dir / ("ffmerge_r" + std::to_string(round) + "_" + std::to_string(gi) + ".dat")).string();
-                }
-
-                merge_k_runs(ins, out_name, inbuf, outbuf, payload_max);
-                next[static_cast<size_t>(gi)] = fs::absolute(out_name).string(); });
-
-            // Cleanup intermediate files from previous rounds
-            // (Careful not to delete original run files)
-            if (round > 0)
-            {
-                for (const auto &f : files)
-                {
-                    fs::path p(f);
-                    const std::string name = p.filename().string();
-                    if (name.rfind("ffmerge_r", 0) == 0)
-                    {
-                        std::error_code ec;
-                        fs::remove(p, ec);
-                    }
-                }
-            }
-
-            files.swap(next);
-            round++;
-            std::cout << "Round " << round << " complete -> " << files.size() << " files remain\n";
-        }
+        ff::ff_DC<MergeTask> dc(dc_divide, dc_combine, dc_cond, dc_base, workers);
+        if (dc.run_then_freeze() < 0)
+            throw std::runtime_error("Failed to start ff_DC");
+        dc.offload(&root);
+        dc.offload((MergeTask *)FF_EOS);
+        dc.wait();
 
         std::cout << "Merge complete -> " << final_out << "\n";
         return 0;

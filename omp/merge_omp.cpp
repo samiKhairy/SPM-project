@@ -9,6 +9,7 @@
 #include <cstring>
 #include <memory>
 #include <stdexcept>
+#include <atomic>
 #include <omp.h>
 #include <iomanip>
 
@@ -42,6 +43,22 @@ struct HeapNode
     bool operator>(const HeapNode &o) const { return key > o.key; }
 };
 
+struct MergeResult
+{
+    std::string path;
+    bool is_temp = false;
+};
+
+struct MergeConfig
+{
+    std::string prefix;
+    std::string final_out;
+    size_t buf_size = 0;
+    uint32_t payload_max = 0;
+    int k = 2;
+    std::atomic<uint64_t> temp_id{0};
+};
+
 static std::vector<std::string> list_runs(const std::string &prefix, const std::string &final_out)
 {
     std::vector<std::string> files;
@@ -62,6 +79,24 @@ static std::vector<std::string> list_runs(const std::string &prefix, const std::
     }
     std::sort(files.begin(), files.end());
     return files;
+}
+
+static std::string make_temp_name(const MergeConfig &cfg)
+{
+    const uint64_t id = cfg.temp_id.fetch_add(1, std::memory_order_relaxed);
+    return cfg.prefix + "_task_" + std::to_string(id) + ".tmp";
+}
+
+static void safe_remove(const std::string &path)
+{
+    try
+    {
+        fs::remove(path);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "WARNING: Could not remove temp file " << path << ": " << e.what() << "\n";
+    }
 }
 
 // Returns bytes written
@@ -147,6 +182,62 @@ static uint64_t merge_k_runs(const std::vector<std::string> &inputs,
     }
 
     return bytes_written;
+}
+
+static void merge_task(const std::vector<std::string> &files,
+                       const MergeConfig &cfg,
+                       bool is_root,
+                       MergeResult &result)
+{
+    if (files.empty())
+        throw std::runtime_error("merge_task: empty file list");
+
+    if (files.size() == 1)
+    {
+        if (is_root && fs::absolute(files[0]) != fs::absolute(cfg.final_out))
+        {
+            fs::rename(files[0], cfg.final_out);
+            result.path = cfg.final_out;
+        }
+        else
+        {
+            result.path = files[0];
+        }
+        result.is_temp = false;
+        return;
+    }
+
+    if (files.size() <= static_cast<size_t>(cfg.k))
+    {
+        result.path = is_root ? cfg.final_out : make_temp_name(cfg);
+        result.is_temp = !is_root;
+        merge_k_runs(files, result.path, cfg.buf_size, cfg.payload_max);
+        return;
+    }
+
+    const size_t mid = files.size() / 2;
+    std::vector<std::string> left(files.begin(), files.begin() + mid);
+    std::vector<std::string> right(files.begin() + mid, files.end());
+
+    MergeResult left_res;
+    MergeResult right_res;
+
+#pragma omp task shared(left_res) firstprivate(left, cfg)
+    merge_task(left, cfg, false, left_res);
+
+#pragma omp task shared(right_res) firstprivate(right, cfg)
+    merge_task(right, cfg, false, right_res);
+
+#pragma omp taskwait
+
+    result.path = is_root ? cfg.final_out : make_temp_name(cfg);
+    result.is_temp = !is_root;
+    merge_k_runs({left_res.path, right_res.path}, result.path, cfg.buf_size, cfg.payload_max);
+
+    if (left_res.is_temp)
+        safe_remove(left_res.path);
+    if (right_res.is_temp)
+        safe_remove(right_res.path);
 }
 
 static size_t clamp_size_t(size_t x, size_t lo, size_t hi)
@@ -244,104 +335,32 @@ int main(int argc, char **argv)
               << "Buffer per stream: " << (buf_size / 1024.0 / 1024.0) << " MB\n"
               << "Initial file count: " << files.size() << "\n\n";
 
-    int round = 0;
-    while (files.size() > 1)
+    MergeConfig cfg{
+        prefix,
+        final_out,
+        buf_size,
+        payload_max,
+        actual_K};
+
+    const double t0 = omp_get_wtime();
+    MergeResult root_result;
+    try
     {
-        std::vector<std::vector<std::string>> groups;
-        groups.reserve((files.size() + actual_K - 1) / actual_K);
-
-        for (size_t i = 0; i < files.size(); i += static_cast<size_t>(actual_K))
+#pragma omp parallel
         {
-            std::vector<std::string> g;
-            const size_t end = std::min(files.size(), i + static_cast<size_t>(actual_K));
-            for (size_t j = i; j < end; ++j)
-                g.push_back(files[j]);
-            groups.push_back(std::move(g));
-        }
-
-        std::vector<std::string> next_files(groups.size());
-        const double t0 = omp_get_wtime();
-
-        bool error_occurred = false;
-
-#pragma omp parallel for schedule(dynamic) if (groups.size() >= 2)
-        for (size_t i = 0; i < groups.size(); ++i)
-        {
-            if (error_occurred)
-                continue; // Skip if another thread failed
-
-            double t_group_start = omp_get_wtime();
-            try
-            {
-                const bool last_round = (groups.size() == 1 && files.size() == groups[i].size());
-                const std::string out_name = last_round ? final_out : (prefix + "_rnd" + std::to_string(round) + "_" + std::to_string(i) + ".tmp");
-
-                uint64_t bytes = merge_k_runs(groups[i], out_name, buf_size, payload_max);
-                next_files[i] = out_name;
-
-                double dt = omp_get_wtime() - t_group_start;
-#pragma omp critical
-                {
-                    std::cout << "[R" << round << "][G" << i << "] Merged " << groups[i].size()
-                              << " files -> " << fs::path(out_name).filename().string()
-                              << " in " << std::fixed << std::setprecision(2) << dt << "s ("
-                              << (bytes / 1024.0 / 1024.0) / dt << " MB/s)\n";
-                }
-            }
-            catch (const std::exception &e)
-            {
-#pragma omp critical
-                {
-                    std::cerr << "ERROR in thread processing group " << i << ": " << e.what() << "\n";
-                    error_occurred = true;
-                }
-            }
-        }
-
-        if (error_occurred)
-        {
-            std::cerr << "FATAL: Merge round " << round << " failed\n";
-            return 2;
-        }
-
-        const double t1 = omp_get_wtime();
-        std::cout << "Round " << round << " complete in " << std::fixed << std::setprecision(2)
-                  << (t1 - t0) << " s\n\n";
-
-        // Clean up old files (except on first round where they're the original runs)
-        if (round > 0)
-        {
-            for (const auto &f : files)
-            {
-                try
-                {
-                    if (fs::absolute(f) != fs::absolute(final_out))
-                        fs::remove(f);
-                }
-                catch (const std::exception &e)
-                {
-                    std::cerr << "WARNING: Could not remove temp file " << f << ": " << e.what() << "\n";
-                }
-            }
-        }
-
-        files = std::move(next_files);
-        round++;
-    }
-
-    // Final rename if needed
-    if (files.size() == 1 && fs::absolute(files[0]) != fs::absolute(final_out))
-    {
-        try
-        {
-            fs::rename(files[0], final_out);
-        }
-        catch (const std::exception &e)
-        {
-            std::cerr << "ERROR: Failed to rename final output: " << e.what() << "\n";
-            return 2;
+#pragma omp single
+            merge_task(files, cfg, true, root_result);
         }
     }
+    catch (const std::exception &e)
+    {
+        std::cerr << "FATAL: Merge failed: " << e.what() << "\n";
+        return 2;
+    }
+    const double t1 = omp_get_wtime();
+
+    std::cout << "Merge complete in " << std::fixed << std::setprecision(2)
+              << (t1 - t0) << " s\n\n";
 
     std::cout << "=== Merge Complete ===\n";
     std::cout << "Output: " << final_out << "\n";
