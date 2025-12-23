@@ -15,13 +15,11 @@ cd $HOME/projectcopy || exit 1
 INPUTS=(
   inputs/input_10gb_p256.dat
   inputs/input_10gb_p8192.dat
-  inputs/input_20gb_p256.dat
-  inputs/input_20gb_p8192.dat
 )
 MEM_GEN_LIST=(1024 512) # MB per worker task: 1GB primary, 512MB backup
 RUN_ROOT=ff/results_bench_sweep
-MEM_MERGE_LIST=(4 8 16 24 32)
-K_LIST=(2 4 8 16 32 64 128)
+MEM_MERGE_LIST=(8 16 32)
+K_LIST=(4 16 64)
 WORKERS_LIST=(1 2 4 8 16)
 
 mkdir -p "$RUN_ROOT"
