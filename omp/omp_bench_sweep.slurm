@@ -10,20 +10,18 @@
 set -euo pipefail
 
 cd $HOME/projectcopy || exit 1
-export OMP_PROC_BIND=close
+export OMP_PROC_BIND=true
 export OMP_PLACES=cores
 
 # === CONFIG ===
 INPUTS=(
   inputs/input_10gb_p256.dat
   inputs/input_10gb_p8192.dat
-  inputs/input_20gb_p256.dat
-  inputs/input_20gb_p8192.dat
 )
 MEM_GEN_LIST=(1024 512) # MB per run: 1GB primary, 512MB backup
 RUN_ROOT=omp/results_bench_sweep
-MEM_MERGE_GB=32
-K=32
+MEM_MERGE_LIST=(8 16 32)
+K_LIST=(4 16 64)
 THREADS_LIST=(1 2 4 8 16)
 
 mkdir -p "$RUN_ROOT"
@@ -52,10 +50,14 @@ for input in "${INPUTS[@]}"; do
             mkdir -p "$run_dir"
             generate_runs "$input" "$mem_gen" "$run_dir"
 
-            echo ">>> [OMP] Phase 2: Merge (K=$K, Threads=$OMP_NUM_THREADS)"
-            time -p ./omp/bin/merge_omp "$run_dir/run_" "$final_out" "$K" "$MEM_MERGE_GB"
-
-            ./tools/bin/verify_sorted "$final_out"
+            for mem_merge in "${MEM_MERGE_LIST[@]}"; do
+                for k_val in "${K_LIST[@]}"; do
+                    final_out="$run_dir/final_k${k_val}_mem${mem_merge}gb.dat"
+                    echo ">>> [OMP] Phase 2: Merge (K=$k_val, Mem=${mem_merge}GB, Threads=$OMP_NUM_THREADS)"
+                    time -p ./omp/bin/merge_omp "$run_dir/run_" "$final_out" "$k_val" "$mem_merge"
+                    ./tools/bin/verify_sorted "$final_out"
+                done
+            done
         done
     done
 done
