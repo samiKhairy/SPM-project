@@ -1,0 +1,17 @@
+=== [2] OPENMP BENCHMARK (16 Threads , RECORDS : 1000000 ,PAYLOAD : 4096 , MEMORY :128  ) ===
+[Setup] Compiling...
+[Setup] Generating Data...
+[DataGen] Generated data_omp.bin (1000000 records)
+--- I/O BOUND TEST (Records=1000000, Payload=4096) ---
+
+Detailed Results (Threads: 16, Records: 1000000, MemoryLimitByte: 128 ,PayloadMax: 4096  ):
+
+Detailed Results (Threads: 16):
+Read Time:  4.12506s
+Sort Time:  0.00274784s (Effective Wall-Clock)
+Write Time: 16.3371s
+Merge Time: 21.72s
+Total Time: 38.5013s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 1000000 records sorted correctly.
+=== Done ===
