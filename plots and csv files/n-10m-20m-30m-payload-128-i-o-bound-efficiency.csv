@@ -1,0 +1,4 @@
+N (Millions),Efficiency (OMP),Efficiency (FF)
+10,0.12,0.14
+20,0.12,0.19
+30,0.10,0.20

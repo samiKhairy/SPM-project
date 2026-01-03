@@ -1,0 +1,4 @@
+Input Size (Millions),OpenMP (16 Threads),FastFlow (16 Threads)
+10,1.52,2.00
+20,1.68,2.61
+30,1.55,2.66

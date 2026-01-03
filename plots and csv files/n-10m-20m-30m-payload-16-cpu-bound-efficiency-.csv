@@ -1,0 +1,4 @@
+Input Size (Millions),Efficiency (OMP),Efficiency (FF)
+10,0.10,0.12
+20,0.10,0.16
+30,0.10,0.17

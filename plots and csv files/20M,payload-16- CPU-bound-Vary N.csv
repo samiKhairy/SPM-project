@@ -1,0 +1,4 @@
+Metric,Sequential (Baseline),OpenMP (16 Threads),FastFlow (16 Workers)
+Time (s),9.73,6.11,4.64
+Speedup,1.00,1.59x,2.10x
+Efficiency,1.00,0.10,0.13
