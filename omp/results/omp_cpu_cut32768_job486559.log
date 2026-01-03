@@ -1,0 +1,26 @@
+=== [OMP] (cpu) ===
+JobID: 486559  Host: node02  Date: Sat Jan  3 09:15:40 PM CET 2026
+N=20000000 PAYLOAD=16 MEM=256 CUTOFF=32768
+Threads: 16
+Dataset: /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P16.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 458M Jan  3 12:58 /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P16.bin
+[Run] Starting...
+--- OMP_NUM_THREADS=16 ---
+
+Detailed OpenMP Results:
+Threads:         16
+Runs:            2
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       0.567783s
+Sort Time:       1.50893s
+Write Time:      2.61793s
+Merge Time:      1.23085s
+Total Wall Time: 6.11278s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/omp_cpu_job486559

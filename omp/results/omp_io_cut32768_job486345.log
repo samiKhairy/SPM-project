@@ -1,0 +1,82 @@
+=== [OMP] (io) ===
+JobID: 486345  Host: node03  Date: Sat Jan  3 02:43:49 PM CET 2026
+N=20000000 PAYLOAD=128 MEM=256 CUTOFF=32768
+Threads: 1 2 4 8 16
+Dataset: /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P128.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 1.5G Jan  3 12:58 /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P128.bin
+[Run] Starting...
+--- OMP_NUM_THREADS=1 ---
+
+Detailed OpenMP Results:
+Threads:         1
+Runs:            6
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       1.67722s
+Sort Time:       4.32035s
+Write Time:      3.16771s
+Merge Time:      2.27772s
+Total Wall Time: 11.6937s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=2 ---
+
+Detailed OpenMP Results:
+Threads:         2
+Runs:            6
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       0.669873s
+Sort Time:       2.65404s
+Write Time:      3.17332s
+Merge Time:      2.33066s
+Total Wall Time: 9.07514s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=4 ---
+
+Detailed OpenMP Results:
+Threads:         4
+Runs:            6
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       0.671933s
+Sort Time:       2.21248s
+Write Time:      3.17751s
+Merge Time:      2.34435s
+Total Wall Time: 8.65683s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=8 ---
+
+Detailed OpenMP Results:
+Threads:         8
+Runs:            6
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       0.664826s
+Sort Time:       1.72705s
+Write Time:      3.1467s
+Merge Time:      2.29393s
+Total Wall Time: 8.0821s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=16 ---
+
+Detailed OpenMP Results:
+Threads:         16
+Runs:            6
+Mem budget:      256 MB
+Cutoff:          32768
+Read Time:       0.664757s
+Sort Time:       1.61831s
+Write Time:      3.11556s
+Merge Time:      2.22108s
+Total Wall Time: 7.86729s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/omp_io_job486345

@@ -1,0 +1,20 @@
+=== [MPI+OMP SWEEP] (io) ===
+SubmitDir: /home/s.khairy/project/mergesort/mpi
+Dataset:   /home/s.khairy/project/mergesort/mpi/../datasets/data_N20000000_P254.bin
+Records:   20000000
+Payload:   254
+MemMB/r:   2048
+Threads:   16
+Cutoff:    32768
+Nodes max: 8
+-----------------------------------
+[Build]
+
+----- RUN: nodes=1 ranks=1 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/bin/out_io_nodes1.bin
+[rank0] splits:
+split[0]=0
+split[1]=2859536263
+srun: Job step aborted: Waiting up to 62 seconds for job step to finish.
+slurmstepd-node01: error: *** STEP 486300.0 ON node01 CANCELLED AT 2026-01-02T19:13:08 ***
+slurmstepd-node01: error: *** JOB 486300 ON node01 CANCELLED AT 2026-01-02T19:13:08 ***

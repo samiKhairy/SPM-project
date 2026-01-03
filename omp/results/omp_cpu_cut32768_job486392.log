@@ -1,0 +1,54 @@
+=== [OMP] (cpu) ===
+JobID: 486392  Host: node04  Date: Sat Jan  3 03:25:52 PM CET 2026
+N=20000000 PAYLOAD=16 MEM=64 CUTOFF=32768
+Threads: 2 4 16
+Dataset: /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P16.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 458M Jan  3 12:58 /home/s.khairy/project/mergesort/omp/../datasets/data_N20000000_P16.bin
+[Run] Starting...
+--- OMP_NUM_THREADS=2 ---
+
+Detailed OpenMP Results:
+Threads:         2
+Runs:            8
+Mem budget:      64 MB
+Cutoff:          32768
+Read Time:       0.648781s
+Sort Time:       2.29128s
+Write Time:      2.01035s
+Merge Time:      1.22507s
+Total Wall Time: 6.30935s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=4 ---
+
+Detailed OpenMP Results:
+Threads:         4
+Runs:            8
+Mem budget:      64 MB
+Cutoff:          32768
+Read Time:       0.23317s
+Sort Time:       1.83986s
+Write Time:      2.02934s
+Merge Time:      1.2217s
+Total Wall Time: 5.45783s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- OMP_NUM_THREADS=16 ---
+
+Detailed OpenMP Results:
+Threads:         16
+Runs:            8
+Mem budget:      64 MB
+Cutoff:          32768
+Read Time:       0.232231s
+Sort Time:       1.32201s
+Write Time:      2.01216s
+Merge Time:      1.22566s
+Total Wall Time: 4.92513s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/omp_cpu_job486392

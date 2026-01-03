@@ -1,0 +1,12 @@
+=== [SEQ] (io) ===
+JobID: 486399  Host: node01  Date: Sat Jan  3 03:31:23 PM CET 2026
+N=30000000 PAYLOAD=128 MEM=256
+Dataset: /home/s.khairy/project/mergesort/seq/../datasets/data_N30000000_P128.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 2.3G Jan  3 13:31 /home/s.khairy/project/mergesort/seq/../datasets/data_N30000000_P128.bin
+[Run] Starting...
+slurmstepd-node01: error: execve(): /home/s.khairy/project/mergesort/seq/bin/mergesort_seq: Permission denied
+srun: error: node01: task 0: Exited with exit code 13
+[Cleanup] Removed /scratch/s.khairy/seq_io_job486399

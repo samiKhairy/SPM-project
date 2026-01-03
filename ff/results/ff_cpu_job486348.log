@@ -1,0 +1,82 @@
+=== [FF] (cpu) ===
+JobID: 486348  Host: node02  Date: Sat Jan  3 02:46:11 PM CET 2026
+N=20000000 PAYLOAD=16 MEM=64
+Workers: 1 2 4 8 16
+Dataset: /home/s.khairy/project/mergesort/ff/../datasets/data_N20000000_P16.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 458M Jan  3 12:58 /home/s.khairy/project/mergesort/ff/../datasets/data_N20000000_P16.bin
+[Run] Starting...
+--- FF workers=1 ---
+
+Detailed FastFlow Results:
+Workers:         1
+Runs:            8
+Read Time:       0.681821s
+Sort Work(sum):  3.73717s
+Write Work(sum): 2.74783s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     6.61474s
+Merge Time:      1.5071s
+Total Wall Time: 8.12275s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=2 ---
+
+Detailed FastFlow Results:
+Workers:         2
+Runs:            8
+Read Time:       0.398282s
+Sort Work(sum):  4.0055s
+Write Work(sum): 2.84581s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     3.92126s
+Merge Time:      1.50232s
+Total Wall Time: 5.42423s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=4 ---
+
+Detailed FastFlow Results:
+Workers:         4
+Runs:            8
+Read Time:       0.410224s
+Sort Work(sum):  4.3687s
+Write Work(sum): 2.98299s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     2.31738s
+Merge Time:      1.49366s
+Total Wall Time: 3.81172s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=8 ---
+
+Detailed FastFlow Results:
+Workers:         8
+Runs:            8
+Read Time:       0.555699s
+Sort Work(sum):  5.17004s
+Write Work(sum): 3.15171s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     1.89666s
+Merge Time:      1.50935s
+Total Wall Time: 3.40673s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=16 ---
+
+Detailed FastFlow Results:
+Workers:         16
+Runs:            8
+Read Time:       0.558709s
+Sort Work(sum):  5.40899s
+Write Work(sum): 3.1416s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     1.91357s
+Merge Time:      1.5005s
+Total Wall Time: 3.41477s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/ff_cpu_job486348

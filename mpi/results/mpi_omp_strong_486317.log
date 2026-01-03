@@ -1,0 +1,60 @@
+=== [MPI+OMP STRONG SCALING] (io) ===
+SubmitDir: /home/s.khairy/project/mergesort/mpi
+Dataset:   /home/s.khairy/project/mergesort/mpi/../datasets/data_N20000000_P254.bin
+Records:   20000000
+Payload:   254
+MemMB/r:   2048
+Cutoff:    32768
+Nodes max: 8
+-------------------------------------------
+[Build]
+
+----- RUN: nodes=1 ranks=1 threads/rank=1 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P1_T1.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P1_T1.log
+
+----- RUN: nodes=2 ranks=2 threads/rank=1 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P2_T1.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P2_T1.log
+
+----- RUN: nodes=4 ranks=4 threads/rank=1 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P4_T1.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P4_T1.log
+
+----- RUN: nodes=8 ranks=8 threads/rank=1 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P8_T1.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P8_T1.log
+
+----- RUN: nodes=1 ranks=1 threads/rank=4 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P1_T4.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P1_T4.log
+
+----- RUN: nodes=2 ranks=2 threads/rank=4 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P2_T4.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P2_T4.log
+
+----- RUN: nodes=4 ranks=4 threads/rank=4 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P4_T4.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P4_T4.log
+
+----- RUN: nodes=8 ranks=8 threads/rank=4 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P8_T4.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P8_T4.log
+
+----- RUN: nodes=1 ranks=1 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P1_T16.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P1_T16.log
+
+----- RUN: nodes=2 ranks=2 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P2_T16.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P2_T16.log
+
+----- RUN: nodes=4 ranks=4 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P4_T16.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P4_T16.log
+
+----- RUN: nodes=8 ranks=8 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/out_io_P8_T16.bin
+LOG: /home/s.khairy/project/mergesort/mpi/results/run_io_P8_T16.log
+
+DONE.

@@ -1,0 +1,22 @@
+=== [SEQ] (io) ===
+JobID: 486380  Host: node02  Date: Sat Jan  3 03:20:49 PM CET 2026
+N=10000000 PAYLOAD=128 MEM=256
+Dataset: /home/s.khairy/project/mergesort/seq/../datasets/data_N10000000_P128.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 763M Jan  3 12:14 /home/s.khairy/project/mergesort/seq/../datasets/data_N10000000_P128.bin
+[Run] Starting...
+
+Detailed Sequential Results:
+Read Time:       0.908822s
+Runs:            3
+Mem budget:      256 MB
+Sort Time:       2.66564s
+Write Time:      2.21693s
+Merge Time:      1.48812s
+Total Wall Time: 7.40797s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 10000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/seq_io_job486380

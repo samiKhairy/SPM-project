@@ -1,0 +1,22 @@
+=== [SEQ] (io) ===
+JobID: 486343  Host: node01  Date: Sat Jan  3 02:43:40 PM CET 2026
+N=20000000 PAYLOAD=128 MEM=256
+Dataset: /home/s.khairy/project/mergesort/seq/../datasets/data_N20000000_P128.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 1.5G Jan  3 12:58 /home/s.khairy/project/mergesort/seq/../datasets/data_N20000000_P128.bin
+[Run] Starting...
+
+Detailed Sequential Results:
+Read Time:       1.78442s
+Runs:            6
+Mem budget:      256 MB
+Sort Time:       5.32126s
+Write Time:      4.3213s
+Merge Time:      3.09515s
+Total Wall Time: 14.7688s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/seq_io_job486343

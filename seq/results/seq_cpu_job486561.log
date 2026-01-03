@@ -1,0 +1,22 @@
+=== [SEQ] (cpu) ===
+JobID: 486561  Host: node04  Date: Sat Jan  3 09:15:56 PM CET 2026
+N=20000000 PAYLOAD=16 MEM=256
+Dataset: /home/s.khairy/project/mergesort/seq/../datasets/data_N20000000_P16.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 458M Jan  3 12:58 /home/s.khairy/project/mergesort/seq/../datasets/data_N20000000_P16.bin
+[Run] Starting...
+
+Detailed Sequential Results:
+Read Time:       0.551053s
+Runs:            2
+Mem budget:      256 MB
+Sort Time:       5.52899s
+Write Time:      2.46562s
+Merge Time:      0.99658s
+Total Wall Time: 9.72682s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/seq_cpu_job486561

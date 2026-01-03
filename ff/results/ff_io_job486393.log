@@ -1,0 +1,54 @@
+=== [FF] (io) ===
+JobID: 486393  Host: node05  Date: Sat Jan  3 03:26:03 PM CET 2026
+N=20000000 PAYLOAD=128 MEM=256
+Workers: 2 4 16
+Dataset: /home/s.khairy/project/mergesort/ff/../datasets/data_N20000000_P128.bin
+-------------------------
+[Setup] Compiling...
+[Setup] Reusing existing dataset.
+-rw-r--r-- 1 s.khairy s.khairy 1.5G Jan  3 12:58 /home/s.khairy/project/mergesort/ff/../datasets/data_N20000000_P128.bin
+[Run] Starting...
+--- FF workers=2 ---
+
+Detailed FastFlow Results:
+Workers:         2
+Runs:            12
+Read Time:       2.12841s
+Sort Work(sum):  4.92304s
+Write Work(sum): 3.61078s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     4.64349s
+Merge Time:      2.42856s
+Total Wall Time: 7.0729s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=4 ---
+
+Detailed FastFlow Results:
+Workers:         4
+Runs:            12
+Read Time:       1.18017s
+Sort Work(sum):  5.25412s
+Write Work(sum): 3.71709s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     2.68245s
+Merge Time:      2.42224s
+Total Wall Time: 5.10535s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+--- FF workers=16 ---
+
+Detailed FastFlow Results:
+Workers:         16
+Runs:            12
+Read Time:       1.46004s
+Sort Work(sum):  6.92771s
+Write Work(sum): 4.98622s
+NOTE: Work(sum) is NOT wall time (workers overlap)
+Phase1 Wall:     2.55873s
+Merge Time:      2.39436s
+Total Wall Time: 4.95377s
+--- [Verification] Checking output.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+DONE.
+[Cleanup] Removed /scratch/s.khairy/ff_io_job486393
