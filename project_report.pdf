@@ -1,0 +1,198 @@
+%PDF-1.4
+
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+
+2 0 obj
+<< /Length 4719 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 48 730.00 Tm (PROJECT 1 REPORT: EXTERNAL MERGE SORT VARIANTS) Tj
+1 0 0 1 48 716.00 Tm () Tj
+1 0 0 1 48 702.00 Tm (1. GOALS AND DATASET FORMAT) Tj
+1 0 0 1 48 688.00 Tm (- Task: build an external merge sort for large record files and explore parallel/distributed variants.) Tj
+1 0 0 1 48 674.00 Tm (- Record layout: 8-byte key, 4-byte payload length, variable payload bytes \(generator bounds payload) Tj
+1 0 0 1 48 660.00 Tm (length\).【tools/record_io.hpp†L10-L49】) Tj
+1 0 0 1 48 646.00 Tm (- Provided utilities: data generator, verification, and k-way/2-way merge helpers for run) Tj
+1 0 0 1 48 632.00 Tm (merging.【tools/datagen.cpp†L1-L73】【tools/verifier.hpp†L1-L59】【tools/merger.hpp†L1-L117】) Tj
+1 0 0 1 48 618.00 Tm (- Metrics captured: wall-clock breakdown \(read, sort, write, merge\) and validation counts across) Tj
+1 0 0 1 48 604.00 Tm (implementations.) Tj
+1 0 0 1 48 590.00 Tm () Tj
+1 0 0 1 48 576.00 Tm (2. SEQUENTIAL BASELINE) Tj
+1 0 0 1 48 562.00 Tm (- File: `seq/mergesort_seq.cpp` implements single-threaded external mergesort.) Tj
+1 0 0 1 48 548.00 Tm (- Phase 1: read chunks up to the memory budget, trim to full records, index offsets, std::sort by key, and) Tj
+1 0 0 1 48 534.00 Tm (write each run sequentially to disk.【seq/mergesort_seq.cpp†L16-L104】) Tj
+1 0 0 1 48 520.00 Tm (- Phase 2: reuse shared `mergeFiles` helper with configurable read/output buffers, then verify output ordering) Tj
+1 0 0 1 48 506.00 Tm (and count.【seq/mergesort_seq.cpp†L106-L141】) Tj
+1 0 0 1 48 492.00 Tm (- Timing: accumulates per-stage wall-clock and reports total wall time.) Tj
+1 0 0 1 48 478.00 Tm () Tj
+1 0 0 1 48 464.00 Tm (3. OPENMP VERSION \(INTRA-RUN PARALLELISM\)) Tj
+1 0 0 1 48 450.00 Tm (- File: `omp/mergesort_omp.cpp` keeps the sequential pipeline but parallelizes the run sorting step with) Tj
+1 0 0 1 48 436.00 Tm (OpenMP tasks.) Tj
+1 0 0 1 48 422.00 Tm (- Uses task-based mergesort on offsets with a configurable cutoff to avoid tiny tasks; tasks share) Tj
+1 0 0 1 48 408.00 Tm (preallocated temporary buffers to reduce allocations.【omp/mergesort_omp.cpp†L20-L86】) Tj
+1 0 0 1 48 394.00 Tm (- Run generation mirrors the sequential logic \(record-safe buffering, trimming, indexing\) but calls) Tj
+1 0 0 1 48 380.00 Tm (`parallel_sort_offsets` when offsets exceed one element.【omp/mergesort_omp.cpp†L88-L169】) Tj
+1 0 0 1 48 366.00 Tm (- Merge phase intentionally remains sequential to isolate intra-run speedups; timing includes thread count,) Tj
+1 0 0 1 48 352.00 Tm (cutoff, and per-stage durations.【omp/mergesort_omp.cpp†L171-L223】) Tj
+1 0 0 1 48 338.00 Tm () Tj
+1 0 0 1 48 324.00 Tm (4. FASTFLOW VERSION \(PIPELINE PARALLELISM ON ONE NODE\)) Tj
+1 0 0 1 48 310.00 Tm (- File: `ff/mergesort_ff.cpp` builds an emitter–worker–collector farm.) Tj
+1 0 0 1 48 296.00 Tm (- Emitter: reads fixed-size blocks \(capped to memory budget\), enforces record boundaries, and builds task) Tj
+1 0 0 1 48 282.00 Tm (objects containing raw bytes and offsets while timing read overhead.【ff/mergesort_ff.cpp†L26-L102】) Tj
+1 0 0 1 48 268.00 Tm (- Workers: sort offsets with `std::sort` and write each run to disk, tracking local sort/write contributions) Tj
+1 0 0 1 48 254.00 Tm (so total work can be summed post-run.【ff/mergesort_ff.cpp†L104-L160】【ff/mergesort_ff.cpp†L222-L242】) Tj
+1 0 0 1 48 240.00 Tm (- Collector: counts completed runs; farm output feeds the sequential k-way merge for) Tj
+1 0 0 1 48 226.00 Tm (finalization.【ff/mergesort_ff.cpp†L162-L176】【ff/mergesort_ff.cpp†L244-L271】) Tj
+1 0 0 1 48 212.00 Tm (- Metrics distinguish overlapped wall-clock \(Phase 1\) from accumulated worker work, clarifying pipeline) Tj
+1 0 0 1 48 198.00 Tm (behavior.) Tj
+1 0 0 1 48 184.00 Tm () Tj
+1 0 0 1 48 170.00 Tm (5. DISTRIBUTED MPI + OPENMP VERSION) Tj
+1 0 0 1 48 156.00 Tm (- File: `mpi/mergesort_mpi_omp.cpp` couples record-aligned input partitioning, intra-rank OpenMP sorting, and) Tj
+1 0 0 1 48 142.00 Tm (MPI tree reduction.) Tj
+1 0 0 1 48 128.00 Tm (- Phase 0 \(rank 0\): scans the file in sliding windows to choose partition boundaries that start on valid) Tj
+1 0 0 1 48 114.00 Tm (record chains, then broadcasts byte offsets to) Tj
+1 0 0 1 48 100.00 Tm (ranks.【mpi/mergesort_mpi_omp.cpp†L22-L120】【mpi/mergesort_mpi_omp.cpp†L185-L229】) Tj
+1 0 0 1 48 86.00 Tm (- Phase 1: each rank reads its byte slice, trims partial tails, indexes offsets, sorts with task-based) Tj
+1 0 0 1 48 72.00 Tm (mergesort, writes per-run files, and merges them locally using shared merger) Tj
+1 0 0 1 48 58.00 Tm (utilities.【mpi/mergesort_mpi_omp.cpp†L122-L196】【mpi/mergesort_mpi_omp.cpp†L231-L301】) Tj
+ET
+endstream
+endobj
+
+3 0 obj
+<< /Length 5238 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 48 730.00 Tm (- Phase 2: binary-reduction tree where senders stream files via MPI, receivers merge pairs with large buffers) Tj
+1 0 0 1 48 716.00 Tm (to minimize passes; the final file resides on rank 0 for verification and optional copy-) Tj
+1 0 0 1 48 702.00 Tm (out.【mpi/mergesort_mpi_omp.cpp†L303-L422】【mpi/mergesort_mpi_omp.cpp†L424-L497】) Tj
+1 0 0 1 48 688.00 Tm (- Safety: payload length validation caps, empty-range warnings, scratch-space cleanup guards, and optional) Tj
+1 0 0 1 48 674.00 Tm (KEEP_SCRATCH flag for debugging.【mpi/mergesort_mpi_omp.cpp†L14-L59】【mpi/mergesort_mpi_omp.cpp†L497-L525】) Tj
+1 0 0 1 48 660.00 Tm () Tj
+1 0 0 1 48 646.00 Tm (6. BUILD AND DATA TOOLING) Tj
+1 0 0 1 48 632.00 Tm (- `tools/datagen.cpp` produces synthetic datasets with controllable record counts, payload caps, and optional) Tj
+1 0 0 1 48 618.00 Tm (splits for MPI inputs.【tools/datagen.cpp†L1-L73】) Tj
+1 0 0 1 48 604.00 Tm (- `tools/merger.hpp` centralizes k-way merging with buffered RunStream readers and optional 2-way merge for) Tj
+1 0 0 1 48 590.00 Tm (MPI reduction; used by all variants.【tools/merger.hpp†L1-L177】) Tj
+1 0 0 1 48 576.00 Tm (- `scripts/common.sh` packages helper functions for SLURM runs: workload presets, dataset creation, scratch) Tj
+1 0 0 1 48 562.00 Tm (management, and build of datagen.【scripts/common.sh†L1-L42】) Tj
+1 0 0 1 48 548.00 Tm (- Each implementation directory contains `new.sh` examples and `bin/` targets \(not modified here\) for cluster) Tj
+1 0 0 1 48 534.00 Tm (submission.) Tj
+1 0 0 1 48 520.00 Tm () Tj
+1 0 0 1 48 506.00 Tm (7. PERFORMANCE HIGHLIGHTS \(COMPLETED EXPERIMENTS\)) Tj
+1 0 0 1 48 492.00 Tm (All experiments used 20M records unless stated otherwise; CPU-bound uses 16-byte payloads, IO-bound uses) Tj
+1 0 0 1 48 478.00 Tm (128-byte payloads.) Tj
+1 0 0 1 48 464.00 Tm (- Thread scaling \(IO-bound 20M, 128B payload\): OpenMP speedup rises from 1.26× \(1 thread\) to 1.83× \(8) Tj
+1 0 0 1 48 450.00 Tm (threads\); FastFlow improves from 1.11× to 2.57× due to pipeline overlap.【plots and csv) Tj
+1 0 0 1 48 436.00 Tm (files/n-20m-payload-128-i-o-bound-speedups-.csv†L1-L6】) Tj
+1 0 0 1 48 422.00 Tm (- Fixed-size throughput \(CPU-bound 20M, 16B payload\): OpenMP at 16 threads reaches 6.11s \(1.59×\), while) Tj
+1 0 0 1 48 408.00 Tm (FastFlow at 16 workers reaches 4.64s \(2.10×\) versus 9.73s sequential.【plots and csv files/20M,payload-16- CPU-) Tj
+1 0 0 1 48 394.00 Tm (bound-Vary N.csv†L1-L4】) Tj
+1 0 0 1 48 380.00 Tm (- Fixed-size throughput \(IO-bound 20M, 128B payload\): OpenMP at 16 threads yields 10.69s \(1.21×\); FastFlow) Tj
+1 0 0 1 48 366.00 Tm (achieves 7.30s \(1.77×\).【plots and csv files/20M,payload-128- IO-bound-Vary N.csv†L1-L4】) Tj
+1 0 0 1 48 352.00 Tm (- Record-count scaling \(CPU-bound, 16B payload, 16 threads/workers\): FastFlow maintains ~2× speedup across) Tj
+1 0 0 1 48 338.00 Tm (10–30M records, while OpenMP varies 1.52–1.68×, showing pipeline resilience when run counts grow.【plots and) Tj
+1 0 0 1 48 324.00 Tm (csv files/n-10m-20m-30m-nbsp-payload-16-cpu-bound-speedups-.csv†L1-L4】) Tj
+1 0 0 1 48 310.00 Tm (- Record-count efficiency \(IO-bound, 128B payload, 16 threads/workers\): efficiency remains 0.10–0.20 as N) Tj
+1 0 0 1 48 296.00 Tm (grows \(OpenMP modest, FastFlow higher but still IO-limited\).【plots and csv) Tj
+1 0 0 1 48 282.00 Tm (files/n-10m-20m-30m-payload-128-i-o-bound-efficiency.csv†L1-L4】) Tj
+1 0 0 1 48 268.00 Tm (- Payload sensitivity: increasing payload from 16B to 128B shifts bottlenecks toward IO; pipeline overlap in) Tj
+1 0 0 1 48 254.00 Tm (FastFlow mitigates impact more effectively than OpenMP’s intra-run parallelism \(see above fixed-size runs\).) Tj
+1 0 0 1 48 240.00 Tm (Strong/weak scaling for MPI+OMP remains pending.) Tj
+1 0 0 1 48 226.00 Tm () Tj
+1 0 0 1 48 212.00 Tm (8. BOTTLENECKS, CHALLENGES, AND REMEDIES) Tj
+1 0 0 1 48 198.00 Tm (- **Record alignment under bounded buffers:** Each reader trims partial trailing records and repositions the) Tj
+1 0 0 1 48 184.00 Tm (stream to preserve alignment, avoiding corrupt offsets across all implementations.【seq/mergesort_seq.cpp†L28-) Tj
+1 0 0 1 48 170.00 Tm (L63】【ff/mergesort_ff.cpp†L41-L77】【mpi/mergesort_mpi_omp.cpp†L153-L196】) Tj
+1 0 0 1 48 156.00 Tm (- **Task granularity vs. overhead \(OpenMP\):** Added `cutoff` to limit task spawning and fallback to serial) Tj
+1 0 0 1 48 142.00 Tm (sort for small segments; defaults avoid tiny tasks but remain tunable per) Tj
+1 0 0 1 48 128.00 Tm (workload.【omp/mergesort_omp.cpp†L52-L86】) Tj
+1 0 0 1 48 114.00 Tm (- **Pipeline back-pressure \(FastFlow\):** Bounded block size \(min of mem budget and 128MB cap\) prevents emitter) Tj
+1 0 0 1 48 100.00 Tm (from overwhelming disks and balances worker throughput.【ff/mergesort_ff.cpp†L186-L211】) Tj
+1 0 0 1 48 86.00 Tm (- **Distributed partition correctness:** Rank 0 performs windowed boundary search with payload validation to) Tj
+1 0 0 1 48 72.00 Tm (ensure each rank starts on a valid record chain, preventing key overlap and supporting variable) Tj
+1 0 0 1 48 58.00 Tm (payloads.【mpi/mergesort_mpi_omp.cpp†L40-L120】) Tj
+ET
+endstream
+endobj
+
+4 0 obj
+<< /Length 3251 >>
+stream
+BT
+/F1 11 Tf
+1 0 0 1 48 730.00 Tm (- **Merge fan-in cost:** Shared `mergeFiles` uses per-run buffering derived from budgets to cap memory while) Tj
+1 0 0 1 48 716.00 Tm (limiting refill frequency; MPI two-way merge forces larger per-run buffers to reduce) Tj
+1 0 0 1 48 702.00 Tm (passes.【tools/merger.hpp†L13-L117】【tools/merger.hpp†L119-L177】) Tj
+1 0 0 1 48 688.00 Tm (- **Verification coverage:** All variants call the same verifier to check sorted order and record count,) Tj
+1 0 0 1 48 674.00 Tm (catching boundary or merging regressions quickly.【seq/mergesort_seq.cpp†L138-L141】【omp/mergesort_omp.cpp†L213-) Tj
+1 0 0 1 48 660.00 Tm (L223】【ff/mergesort_ff.cpp†L262-L271】【mpi/mergesort_mpi_omp.cpp†L436-L475】) Tj
+1 0 0 1 48 646.00 Tm () Tj
+1 0 0 1 48 632.00 Tm (9. DISTRIBUTED COST MODEL \(MPI + OPENMP\)) Tj
+1 0 0 1 48 618.00 Tm (Let P be ranks, T threads per rank, M the per-rank memory budget, R total records, and B average payload size.) Tj
+1 0 0 1 48 604.00 Tm (- **Local run generation \(Phase 1\):** Each rank scans ~R/P records. Cost ≈ O\(\(R/P\) log\(R/P\)/T\) compute plus) Tj
+1 0 0 1 48 590.00 Tm (O\(R/P · B / disk_bw\) IO. Task cutoff bounds scheduling overhead to O\(R/P ÷ cutoff\).) Tj
+1 0 0 1 48 576.00 Tm (- **Local merge:** k-way merge where k ≈ \(R/P · B\)/M. Cost ≈ O\(\(R/P\) log k\) with buffer hits amortizing disk) Tj
+1 0 0 1 48 562.00 Tm (refills; out-buffer size \(8MB\) keeps flush frequency low.) Tj
+1 0 0 1 48 548.00 Tm (- **MPI tree reduction \(Phase 2\):** log₂P rounds of 2-way merges. Communication cost per round ≈) Tj
+1 0 0 1 48 534.00 Tm (message_volume/BW + latency, where message_volume halves each level. Overlap is limited because merges start) Tj
+1 0 0 1 48 520.00 Tm (after full file receipt; however, stream-based receive/send avoids extra copies and allows merge to start) Tj
+1 0 0 1 48 506.00 Tm (immediately after each recv completes.) Tj
+1 0 0 1 48 492.00 Tm (- **Bottlenecks:** slowest rank in Phase 1 \(disk variability or large k\) dictates barrier exit; Phase 2) Tj
+1 0 0 1 48 478.00 Tm (bounded by network bandwidth when payloads are large. Payload validation and stream transfers add small) Tj
+1 0 0 1 48 464.00 Tm (constant overheads.) Tj
+1 0 0 1 48 450.00 Tm (- **Optimization levers:** increase per-run buffers in Phase 2 to reduce passes, tune cutoff and threads per) Tj
+1 0 0 1 48 436.00 Tm (rank to balance CPU vs disk, and pre-create scratch on local SSD to avoid shared storage contention.) Tj
+1 0 0 1 48 422.00 Tm () Tj
+1 0 0 1 48 408.00 Tm (10. STATUS AND NEXT STEPS) Tj
+1 0 0 1 48 394.00 Tm (- Completed: sequential baseline, OpenMP intra-run parallelism, FastFlow pipeline parallelism, MPI+OMP) Tj
+1 0 0 1 48 380.00 Tm (distributed merge tree, dataset tooling, and verification.) Tj
+1 0 0 1 48 366.00 Tm (- Pending: strong-scaling and weak-scaling experiments for MPI+OMP; potential extension to overlap) Tj
+1 0 0 1 48 352.00 Tm (communication with merging \(e.g., chunked receive-to-merge\) and adaptive block sizing per workload.) Tj
+1 0 0 1 48 338.00 Tm (- Suggested validation: run `verifyOutput` on final files and capture per-stage timers to track regressions) Tj
+1 0 0 1 48 324.00 Tm (when adding further optimizations.) Tj
+ET
+endstream
+endobj
+
+5 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+
+6 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+
+7 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 5 0 R >>
+endobj
+
+8 0 obj
+<< /Type /Pages /Kids [ 7 0 R 8 0 R 9 0 R ] /Count 3 >>
+endobj
+
+9 0 obj
+<< /Type /Catalog /Pages 6 0 R >>
+endobj
+
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000079 00000 n 
+0000004850 00000 n 
+0000010140 00000 n 
+0000013443 00000 n 
+0000013569 00000 n 
+0000013695 00000 n 
+0000013821 00000 n 
+0000013892 00000 n 
+trailer
+<< /Size 10 /Root 7 0 R >>
+startxref
+13941
+%%EOF
