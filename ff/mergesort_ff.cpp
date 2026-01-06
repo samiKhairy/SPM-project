@@ -34,7 +34,7 @@ struct Task {
     std::vector<size_t> offsets;
 };
 
-// ---- Global timers (sum of stages; note overlap is expected in pipeline/farm) ----
+// ---- Global timers (sum of stages; note: overlap is expected in Farm) ----
 static double t_read  = 0.0;   // emitter only
 static double t_sort  = 0.0;   // sum over workers
 static double t_write = 0.0;   // sum over workers
@@ -56,7 +56,7 @@ struct Emitter : ff_node_t<Task> {
   : inputPath(path),
     memoryLimitBytes(memBytes),
     blockBytes(blkBytes),
-    ioBuf(1 << 20) {}
+    ioBuf(1 << 20) {} // allocates 1 MB buffer for internal file buffer
 
     int svc_init() override {
         inFile.open(inputPath, std::ios::binary);

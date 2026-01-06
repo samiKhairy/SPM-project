@@ -19,7 +19,8 @@ void generateFile(const std::string &filename, size_t count, uint32_t payloadMax
         exit(1);
     }
 
-    std::mt19937_64 rng(time(NULL) + seedOffset); // distinct seed per split
+    std::mt19937_64 rng(time(NULL) + seedOffset); // distinct seed per split ,  high-quality random number generator (much better than the old rand()).
+    
     std::uniform_int_distribution<uint64_t> distKey;
     std::uniform_int_distribution<uint32_t> distLen(8, payloadMax);
 

@@ -1,12 +1,3 @@
-// mergesort_mpi_omp.cpp - MPI + OpenMP hybrid out-of-core mergesort
-//
-// Design:
-//  Phase 0: rank0 computes record-aligned byte splits, broadcasts [start,end) offsets.
-//  Phase 1: each rank reads ONLY its byte-range, uses OpenMP task mergesort to generate local runs,
-//           then merges local runs -> one sorted file per rank.
-//  Phase 2: MPI reduction tree: ranks send their sorted file to partner; receiver merges -> new sorted file.
-//           rank0 ends with final file and copies to requested output.
-
 #include <mpi.h>
 #include <omp.h>
 
@@ -25,16 +16,16 @@
 
 namespace fs = std::filesystem;
 
-// ---- NEW: sanity caps for boundary validation ----
+// ---- sanity caps for boundary validation ----
 static constexpr uint32_t HARD_MAX_LEN = 1u << 20; // 1MB safety cap
-static constexpr uint32_t MIN_LEN      = 8;        // set to 8 if your generator guarantees len>=8
+static constexpr uint32_t MIN_LEN      = 8;        // 
 
 static inline double now_sec() {
     using clk = std::chrono::high_resolution_clock;
     return std::chrono::duration<double>(clk::now().time_since_epoch()).count();
 }
 
-// ---------------- OpenMP sort-on-offsets (unchanged) ----------------
+// ---------------- OpenMP sort-on-offsets ----------------
 static inline bool offLess(const std::vector<char>& raw, size_t a, size_t b) {
     return recordio::keyAt(raw, a) < recordio::keyAt(raw, b);
 }
@@ -86,7 +77,7 @@ static void parallel_sort_offsets(std::vector<size_t>& offsets,
     }
 }
 
-// ---- NEW: robust boundary validator (K consecutive records) ----
+// --- boundary validator (K consecutive records) ----
 static bool validate_chain(const std::vector<char>& buf, size_t p, uint32_t payload_max, int k) {
     size_t cur = p;
     for (int i = 0; i < k; ++i) {
@@ -153,14 +144,14 @@ static std::vector<uint64_t> compute_splits_rank0(const std::string& file, int P
     }
     splits[P] = fsz;
 
-    // ---- NEW: print splits on rank0 ----
+    // ---- print splits on rank0 ----
     std::cerr << "[rank0] splits:\n";
     for (int i = 0; i <= P; ++i) std::cerr << "split[" << i << "]=" << splits[i] << "\n";
 
     return splits;
 }
 
-// ---------------- Read a byte-range into blocks, generate local run files ----------------
+// Read a byte-range into blocks, generate local run files 
 struct LocalRunsResult {
     int runs = 0;
     double t_read = 0.0;
@@ -327,7 +318,7 @@ int main(int argc, char** argv) {
     uint64_t nRec = std::stoull(argv[2]);
     (void)nRec;
 
-    // ---- NEW: actually use PAYLOAD as max len for validation ----
+    // use PAYLOAD as max len for validation 
     uint32_t payload_max = (uint32_t)std::stoul(argv[3]);
 
     size_t memBytes = (size_t)std::stoull(argv[4]) * 1024ull * 1024ull;
@@ -419,7 +410,7 @@ MPI_Barrier(MPI_COMM_WORLD);
 double t_phase2_end = now_sec();
 double local_phase2 = t_phase2_end - t_phase2_start;
 
-// end timing here (NO COPY INCLUDED)
+// (NO COPY INCLUDED)
 double T1 = now_sec();
 double local_total = T1 - T0;
 
@@ -433,7 +424,7 @@ double max_split = 0, max_copy_in_total = 0;
 MPI_Reduce(&t_split, &max_split, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 MPI_Reduce(&t_copy_in_total, &max_copy_in_total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
-// ---- report + verify local (rank0) ----
+
 if (rank == 0) {
     std::cout << "\n=== [MPI+OMP] RESULTS (copy excluded) ===\n";
     std::cout << "Ranks:            " << P << "\n";
@@ -451,8 +442,8 @@ if (rank == 0) {
     verifyOutput(curFile.string(), (size_t)std::stoull(argv[2]));
 }
 
-// ---- copy AFTER timing + AFTER verification (rank0 only, no barriers) ----
-// ---- copy AFTER timing + AFTER verification (rank0 only) ----
+
+//  copy after timing + after verification (rank0 only)
 if (rank == 0) {
     double tc0 = now_sec();
     fs::copy_file(curFile, outFinal, fs::copy_options::overwrite_existing);
@@ -463,7 +454,7 @@ if (rank == 0) {
     std::cout << "[Post] Copy time (excluded):   " << t_copy_after << " s\n";
 }
 
-// Make sure nobody is still reading/writing scratch before deleting
+
 MPI_Barrier(MPI_COMM_WORLD);
 
 // Each rank deletes its own scratch directory

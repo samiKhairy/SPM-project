@@ -34,13 +34,14 @@ namespace recordio
         const size_t start = buffer.size();
         buffer.resize(start + kHeaderSize + len);
 
-        std::memcpy(buffer.data() + start, &key, sizeof(uint64_t));
-        std::memcpy(buffer.data() + start + sizeof(uint64_t), &len, sizeof(uint32_t));
-        source.read(buffer.data() + start + kHeaderSize, len);
+        std::memcpy(buffer.data() + start, &key, sizeof(uint64_t)); //writes the key
+        std::memcpy(buffer.data() + start + sizeof(uint64_t), &len, sizeof(uint32_t)); //writes the len
+        source.read(buffer.data() + start + kHeaderSize, len); //writes the actual payload 
 
         return start;
     }
 
+    
     inline void writeAt(std::ostream &out, const std::vector<char> &buffer, size_t offset)
     {
         const uint32_t len = lenAt(buffer, offset);
@@ -59,9 +60,9 @@ namespace recordio
 
     inline void writeRecord(std::ostream &out, uint64_t key, uint32_t len, const std::vector<char> &payload)
     {
-        out.write(reinterpret_cast<const char *>(&key), sizeof(uint64_t));
-        out.write(reinterpret_cast<const char *>(&len), sizeof(uint32_t));
-        out.write(payload.data(), (std::streamsize)len);
+        out.write(reinterpret_cast<const char *>(&key), sizeof(uint64_t)); // write the key
+        out.write(reinterpret_cast<const char *>(&len), sizeof(uint32_t)); // write the len 
+        out.write(payload.data(), (std::streamsize)len); // write the payload
     }
 }
 

@@ -1,0 +1,25 @@
+=== MANUAL RUN: cpu with THREADS=8 ===
+
+--- RUN: Nodes=1 | Ranks/Node=2 | Threads=8 ---
+srun: Job step's --cpus-per-task value exceeds that of job (8 > 1). Job step may never run.
+[rank0] splits:
+split[0]=0
+split[1]=359999511
+split[2]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            2
+Threads/rank:     8
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.022908 s
+Copy(in total):   0 s
+Phase1 MAX:       4.77364 s
+Phase2 MAX:       2.25259 s
+Total  MAX:       7.04929 s
+Unaccounted:      0.000151396 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s1.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s1.bin ---
+srun: Job step aborted: Waiting up to 62 seconds for job step to finish.
+slurmstepd-node01: error: *** STEP 486585.0 ON node01 CANCELLED AT 2026-01-04T11:35:00 ***
+slurmstepd-node01: error: *** JOB 486585 ON node01 CANCELLED AT 2026-01-04T11:35:00 ***

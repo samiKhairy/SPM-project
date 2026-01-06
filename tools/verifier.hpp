@@ -42,7 +42,7 @@ inline void verifyOutput(const std::string &filename, size_t expectedCount)
             break;
         f.seekg(len, std::ios::cur);
 
-        if (currentKey < lastKey)
+        if (currentKey < lastKey) // checks if the current key is smaller than previous , -> FAIL
         {
             std::cerr << "[Verify] FAIL: Order violation at index " << count
                       << ". Prev: " << lastKey << " > Curr: " << currentKey << std::endl;
@@ -53,7 +53,7 @@ inline void verifyOutput(const std::string &filename, size_t expectedCount)
         count++;
     }
 
-    if (sorted && count == expectedCount)
+    if (sorted && count == expectedCount) // if sorted and counts match -> SUCCESS
     {
         std::cout << "[Verify] SUCCESS: " << count << " records sorted correctly." << std::endl;
     }

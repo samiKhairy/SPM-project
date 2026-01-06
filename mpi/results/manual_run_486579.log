@@ -1,0 +1,326 @@
+=== MANUAL RUN: cpu with THREADS=1 ===
+
+--- RUN: Nodes=1 | Ranks/Node=16 | Threads=1 ---
+[rank0] splits:
+split[0]=0
+split[1]=44999941
+split[2]=89999881
+split[3]=134999815
+split[4]=179999761
+split[5]=224999701
+split[6]=269999647
+split[7]=314999580
+split[8]=359999511
+split[9]=404999462
+split[10]=449999391
+split[11]=494999344
+split[12]=539999270
+split[13]=584999214
+split[14]=629999148
+split[15]=674999071
+split[16]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            16
+Threads/rank:     1
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.272675 s
+Copy(in total):   0 s
+Phase1 MAX:       1.34345 s
+Phase2 MAX:       6.65845 s
+Total  MAX:       8.27572 s
+Unaccounted:      0.0011487 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s8.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s8.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_cpu_N1_T1.bin
+[Post] Copy time (excluded):   4.42376 s
+
+--- RUN: Nodes=2 | Ranks/Node=16 | Threads=1 ---
+[rank0] splits:
+split[0]=0
+split[1]=22499971
+split[2]=44999941
+split[3]=67499910
+split[4]=89999881
+split[5]=112499864
+split[6]=134999815
+split[7]=157499803
+split[8]=179999761
+split[9]=202499737
+split[10]=224999701
+split[11]=247499674
+split[12]=269999647
+split[13]=292499605
+split[14]=314999580
+split[15]=337499540
+split[16]=359999511
+split[17]=382499486
+split[18]=404999462
+split[19]=427499411
+split[20]=449999391
+split[21]=472499360
+split[22]=494999344
+split[23]=517499303
+split[24]=539999270
+split[25]=562499243
+split[26]=584999214
+split[27]=607499165
+split[28]=629999148
+split[29]=652499104
+split[30]=674999071
+split[31]=697499056
+split[32]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            32
+Threads/rank:     1
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.547935 s
+Copy(in total):   0 s
+Phase1 MAX:       0.790019 s
+Phase2 MAX:       6.32682 s
+Total  MAX:       7.67226 s
+Unaccounted:      0.0074811 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s16.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s16.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_cpu_N2_T1.bin
+[Post] Copy time (excluded):   4.47953 s
+
+--- RUN: Nodes=4 | Ranks/Node=16 | Threads=1 ---
+[rank0] splits:
+split[0]=0
+split[1]=11249985
+split[2]=22499971
+split[3]=33749968
+split[4]=44999941
+split[5]=56249929
+split[6]=67499910
+split[7]=78749912
+split[8]=89999881
+split[9]=101249870
+split[10]=112499864
+split[11]=123749846
+split[12]=134999815
+split[13]=146249808
+split[14]=157499803
+split[15]=168749771
+split[16]=179999761
+split[17]=191249740
+split[18]=202499737
+split[19]=213749717
+split[20]=224999701
+split[21]=236249679
+split[22]=247499674
+split[23]=258749657
+split[24]=269999647
+split[25]=281249634
+split[26]=292499605
+split[27]=303749584
+split[28]=314999580
+split[29]=326249561
+split[30]=337499540
+split[31]=348749524
+split[32]=359999511
+split[33]=371249492
+split[34]=382499486
+split[35]=393749479
+split[36]=404999462
+split[37]=416249429
+split[38]=427499411
+split[39]=438749400
+split[40]=449999391
+split[41]=461249377
+split[42]=472499360
+split[43]=483749334
+split[44]=494999344
+split[45]=506249311
+split[46]=517499303
+split[47]=528749288
+split[48]=539999270
+split[49]=551249256
+split[50]=562499243
+split[51]=573749225
+split[52]=584999214
+split[53]=596249181
+split[54]=607499165
+split[55]=618749149
+split[56]=629999148
+split[57]=641249129
+split[58]=652499104
+split[59]=663749098
+split[60]=674999071
+split[61]=686249055
+split[62]=697499056
+split[63]=708749041
+split[64]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            64
+Threads/rank:     1
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.765836 s
+Copy(in total):   0 s
+Phase1 MAX:       0.666628 s
+Phase2 MAX:       4.34863 s
+Total  MAX:       5.78795 s
+Unaccounted:      0.0068543 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s32.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s32.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_cpu_N4_T1.bin
+[Post] Copy time (excluded):   4.39067 s
+
+--- RUN: Nodes=8 | Ranks/Node=16 | Threads=1 ---
+[rank0] splits:
+split[0]=0
+split[1]=5624995
+split[2]=11249985
+split[3]=16874991
+split[4]=22499971
+split[5]=28124983
+split[6]=33749968
+split[7]=39374956
+split[8]=44999941
+split[9]=50624935
+split[10]=56249929
+split[11]=61874939
+split[12]=67499910
+split[13]=73124919
+split[14]=78749912
+split[15]=84374888
+split[16]=89999881
+split[17]=95624875
+split[18]=101249870
+split[19]=106874871
+split[20]=112499864
+split[21]=118124837
+split[22]=123749846
+split[23]=129374843
+split[24]=134999815
+split[25]=140624824
+split[26]=146249808
+split[27]=151874790
+split[28]=157499803
+split[29]=163124797
+split[30]=168749771
+split[31]=174374771
+split[32]=179999761
+split[33]=185624749
+split[34]=191249740
+split[35]=196874736
+split[36]=202499737
+split[37]=208124726
+split[38]=213749717
+split[39]=219374707
+split[40]=224999701
+split[41]=230624705
+split[42]=236249679
+split[43]=241874685
+split[44]=247499674
+split[45]=253124659
+split[46]=258749657
+split[47]=264374640
+split[48]=269999647
+split[49]=275624639
+split[50]=281249634
+split[51]=286874617
+split[52]=292499605
+split[53]=298124604
+split[54]=303749584
+split[55]=309374592
+split[56]=314999580
+split[57]=320624578
+split[58]=326249561
+split[59]=331874553
+split[60]=337499540
+split[61]=343124528
+split[62]=348749524
+split[63]=354374519
+split[64]=359999511
+split[65]=365624500
+split[66]=371249492
+split[67]=376874486
+split[68]=382499486
+split[69]=388124466
+split[70]=393749479
+split[71]=399374459
+split[72]=404999462
+split[73]=410624445
+split[74]=416249429
+split[75]=421874429
+split[76]=427499411
+split[77]=433124419
+split[78]=438749400
+split[79]=444374405
+split[80]=449999391
+split[81]=455624378
+split[82]=461249377
+split[83]=466874357
+split[84]=472499360
+split[85]=478124342
+split[86]=483749334
+split[87]=489374338
+split[88]=494999344
+split[89]=500624313
+split[90]=506249311
+split[91]=511874309
+split[92]=517499303
+split[93]=523124280
+split[94]=528749288
+split[95]=534374282
+split[96]=539999270
+split[97]=545624255
+split[98]=551249256
+split[99]=556874235
+split[100]=562499243
+split[101]=568124225
+split[102]=573749225
+split[103]=579374219
+split[104]=584999214
+split[105]=590624188
+split[106]=596249181
+split[107]=601874178
+split[108]=607499165
+split[109]=613124177
+split[110]=618749149
+split[111]=624374162
+split[112]=629999148
+split[113]=635624127
+split[114]=641249129
+split[115]=646874127
+split[116]=652499104
+split[117]=658124099
+split[118]=663749098
+split[119]=669374091
+split[120]=674999071
+split[121]=680624074
+split[122]=686249055
+split[123]=691874055
+split[124]=697499056
+split[125]=703124057
+split[126]=708749041
+split[127]=714374028
+split[128]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            128
+Threads/rank:     1
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.550227 s
+Copy(in total):   0 s
+Phase1 MAX:       0.333163 s
+Phase2 MAX:       5.3962 s
+Total  MAX:       6.33764 s
+Unaccounted:      0.0580485 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s64.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s64.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_cpu_N8_T1.bin
+[Post] Copy time (excluded):   4.60988 s
+DONE.

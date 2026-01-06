@@ -20,19 +20,21 @@ static inline double wall_sec(std::chrono::high_resolution_clock::time_point a,
     return std::chrono::duration<double>(b - a).count();
 }
 
+
+// Phase 1 
 int generateRuns(const std::string &inputPath, size_t memoryLimitBytes)
 {
     std::ifstream inFile(inputPath, std::ios::binary);
     if (!inFile) return 0;
 
-    // IO buffering (simple)
-    std::vector<char> ioBuf(1 << 20);
+    // IO buffering 
+    std::vector<char> ioBuf(1 << 20); // 1 MB Buffer
     inFile.rdbuf()->pubsetbuf(ioBuf.data(), ioBuf.size());
 
     std::vector<char> rawBlock;
     std::vector<size_t> offsets;
 
-    rawBlock.reserve(memoryLimitBytes);
+    rawBlock.reserve(memoryLimitBytes); // user defined limit for RAM 
     offsets.reserve(std::max<size_t>(1, memoryLimitBytes / 64));
 
     int runID = 0;
@@ -82,7 +84,7 @@ int generateRuns(const std::string &inputPath, size_t memoryLimitBytes)
         auto t2 = std::chrono::high_resolution_clock::now();
 
         std::sort(offsets.begin(), offsets.end(),
-                  [&](size_t a, size_t b) {
+                  [&](size_t a, size_t b) { // "Compare Key(a) vs Key(b)."
                       return recordio::keyAt(rawBlock, a) < recordio::keyAt(rawBlock, b);
                   });
 

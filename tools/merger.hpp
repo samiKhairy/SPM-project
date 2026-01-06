@@ -21,6 +21,7 @@ static constexpr size_t MIN_RUN_BUF  = 256ull * 1024;        // 256KB
 static constexpr size_t MAX_RUN_BUF  = 64ull  * 1024 * 1024; // 64MB
 
 struct RunStream {
+    // birth of a Stream (Constructor)
     std::ifstream file;
     std::vector<char> buf;
     size_t pos = 0, valid = 0;
@@ -40,6 +41,7 @@ struct RunStream {
     }
 
 private:
+    // refills the buffer
     inline bool refill_preserve() {
         const size_t rem = valid - pos;
         if (rem) std::memmove(buf.data(), buf.data() + pos, rem);
@@ -55,6 +57,7 @@ private:
     }
 
 public:
+    // parses  a Record
     inline void advance() {
         if (finished) return;
 
@@ -115,33 +118,34 @@ inline void mergeFiles(const std::vector<std::string>& inputFiles,
     size_t outPos = 0;
 
     auto flush = [&]() {
-        if (outPos) {
-            out.write(outBuf.data(), (std::streamsize)outPos);
+        if (outPos) { // Do we have data waiting in outBuf?
+            out.write(outBuf.data(), (std::streamsize)outPos); 
             outPos = 0;
         }
     };
 
+    // min heap loop, checks the smallest and pop it and read again from the same run
     while (!pq.empty()) {
         const auto top = pq.top(); pq.pop();
         RunStream* rs = runs[top.idx].get();
 
         const size_t recSize = 12ull + (size_t)rs->len;
-        if (outPos + recSize > outBuf.size()) flush();
+        if (outPos + recSize > outBuf.size()) flush(); // Is the output buffer full?
 
         std::memcpy(outBuf.data() + outPos,       &rs->key, 8);
         std::memcpy(outBuf.data() + outPos + 8,   &rs->len, 4);
         std::memcpy(outBuf.data() + outPos + 12,  rs->payload, rs->len);
         outPos += recSize;
 
-        rs->advance();
+        rs->advance(); // reload the next item from the same run and checks buffer, refills from disk if needed
         if (!rs->finished) pq.push({rs->key, top.idx});
     }
 
-    flush();
+    flush(); //flush whatever is in the output left to the disk
     out.close();
 
     for (const auto& f : inputFiles)
-        std::filesystem::remove(f);
+        std::filesystem::remove(f); // Delete all the temporary chunk files of the runs since we made a big file 
 }
 
 // Fast 2-way merge (MPI tree)
@@ -185,7 +189,7 @@ inline void mergeTwoFiles(const std::string& A,
         rs.advance();
     };
 
-    while (!a.finished && !b.finished) {
+    while (!a.finished && !b.finished) { // here instead of min heap we use if statement
         if (a.key <= b.key) emit(a);
         else                emit(b);
     }

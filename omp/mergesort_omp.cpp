@@ -13,7 +13,7 @@
 #include "../tools/record_io.hpp"
 #include "../tools/merger.hpp"
 
-// Global Timers (Wall-Clock Only)
+
 double t_read = 0.0, t_sort = 0.0, t_write = 0.0, t_merge = 0.0;
 
 static inline double wall_sec(std::chrono::high_resolution_clock::time_point a,
@@ -40,8 +40,7 @@ static void merge_offsets(std::vector<size_t>& v, std::vector<size_t>& tmp,
     for (int x = l; x < r; ++x) v[x] = tmp[x];
 }
 
-// --- Task-based mergesort on offsets ---
-
+//  Task-based mergesort on offsets 
 static void mergesort_task(std::vector<size_t>& v, std::vector<size_t>& tmp,
                            int l, int r,
                            const std::vector<char>& raw,
@@ -168,7 +167,6 @@ int generateRuns(const std::string &inputPath, size_t memoryLimitBytes,
 
 int main(int argc, char *argv[])
 {
-    // Usage:
     // mergesort_omp <file> <N> <PAYLOAD> <MemMB> [threads] [cutoff]
     if (argc < 5) return 1;
 

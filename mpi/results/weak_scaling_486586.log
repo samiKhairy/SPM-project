@@ -1,0 +1,105 @@
+=== WEAK SCALING: cpu (Base=10000000/node) ===
+
+--- WEAK RUN: Nodes=1 | Total Records=10000000 ---
+srun: Job step's --cpus-per-task value exceeds that of job (16 > 1). Job step may never run.
+[rank0] splits:
+split[0]=0
+split[1]=239993890
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            1
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.00622106 s
+Copy(in total):   0 s
+Phase1 MAX:       2.86442 s
+Phase2 MAX:       2.38419e-06 s
+Total  MAX:       2.87064 s
+Unaccounted:      3.8147e-06 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/sorted_r0.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/sorted_r0.bin ---
+[Verify] SUCCESS: 10000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_weak_cpu_N1.bin
+[Post] Copy time (excluded):   1.44364 s
+
+--- WEAK RUN: Nodes=2 | Total Records=20000000 ---
+srun: Job step's --cpus-per-task value exceeds that of job (16 > 1). Job step may never run.
+[rank0] splits:
+split[0]=0
+split[1]=239994010
+split[2]=479987986
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            2
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.0242624 s
+Copy(in total):   0 s
+Phase1 MAX:       2.97158 s
+Phase2 MAX:       1.68993 s
+Total  MAX:       4.70069 s
+Unaccounted:      0.0149109 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s1.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s1.bin ---
+[Verify] SUCCESS: 20000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_weak_cpu_N2.bin
+[Post] Copy time (excluded):   3.071 s
+
+--- WEAK RUN: Nodes=4 | Total Records=40000000 ---
+srun: Job step's --cpus-per-task value exceeds that of job (16 > 1). Job step may never run.
+[rank0] splits:
+split[0]=0
+split[1]=240005795
+split[2]=480011572
+split[3]=720017342
+split[4]=960023104
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            4
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.0589097 s
+Copy(in total):   0 s
+Phase1 MAX:       3.09325 s
+Phase2 MAX:       3.89811 s
+Total  MAX:       7.05269 s
+Unaccounted:      0.00241399 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s2.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s2.bin ---
+[Verify] SUCCESS: 40000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_weak_cpu_N4.bin
+[Post] Copy time (excluded):   6.14618 s
+
+--- WEAK RUN: Nodes=8 | Total Records=80000000 ---
+srun: Job step's --cpus-per-task value exceeds that of job (16 > 1). Job step may never run.
+[rank0] splits:
+split[0]=0
+split[1]=239997092
+split[2]=479994193
+split[3]=719991285
+split[4]=959988369
+split[5]=1199985468
+split[6]=1439982548
+split[7]=1679979645
+split[8]=1919976731
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            8
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.124361 s
+Copy(in total):   0 s
+Phase1 MAX:       3.72216 s
+Phase2 MAX:       11.5916 s
+Total  MAX:       15.4414 s
+Unaccounted:      0.00327277 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s4.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s4.bin ---
+[Verify] SUCCESS: 80000000 records sorted correctly.
+[Post] Copied final output to: results/bin/out_weak_cpu_N8.bin
+[Post] Copy time (excluded):   11.9161 s
+DONE.

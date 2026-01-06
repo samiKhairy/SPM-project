@@ -1,0 +1,115 @@
+=== [MPI+OMP SWEEP] (cpu) ===
+SubmitDir: /home/s.khairy/project/mergesort/mpi
+Dataset:   /home/s.khairy/project/mergesort/mpi/../datasets/data_N30000000_P16.bin
+Records:   30000000
+Payload:   16
+MemMB/r:   64
+Threads:   16
+Cutoff:    32768
+Nodes max: 8
+-----------------------------------
+[Build]
+
+----- RUN: nodes=1 ranks=1 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes1.bin
+[rank0] splits:
+split[0]=0
+split[1]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            1
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.00694418 s
+Copy(in total):   0 s
+Phase1 MAX:       8.9655 s
+Phase2 MAX:       5.24521e-06 s
+Total  MAX:       8.97245 s
+Unaccounted:      4.05312e-06 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/sorted_r0.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/sorted_r0.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes1.bin
+[Post] Copy time (excluded):   4.53042 s
+
+----- RUN: nodes=2 ranks=2 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes2.bin
+[rank0] splits:
+split[0]=0
+split[1]=359999511
+split[2]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            2
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.0247731 s
+Copy(in total):   0 s
+Phase1 MAX:       4.45693 s
+Phase2 MAX:       2.50636 s
+Total  MAX:       7.00427 s
+Unaccounted:      0.0162108 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s1.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s1.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes2.bin
+[Post] Copy time (excluded):   4.62793 s
+
+----- RUN: nodes=4 ranks=4 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes4.bin
+[rank0] splits:
+split[0]=0
+split[1]=179999761
+split[2]=359999511
+split[3]=539999270
+split[4]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            4
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.05706 s
+Copy(in total):   0 s
+Phase1 MAX:       2.37029 s
+Phase2 MAX:       2.94753 s
+Total  MAX:       5.37686 s
+Unaccounted:      0.00197601 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s2.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s2.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes4.bin
+[Post] Copy time (excluded):   4.35501 s
+
+----- RUN: nodes=8 ranks=8 threads/rank=16 -----
+OUT: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes8.bin
+[rank0] splits:
+split[0]=0
+split[1]=89999881
+split[2]=179999761
+split[3]=269999647
+split[4]=359999511
+split[5]=449999391
+split[6]=539999270
+split[7]=629999148
+split[8]=719999008
+
+=== [MPI+OMP] RESULTS (copy excluded) ===
+Ranks:            8
+Threads/rank:     16
+MemMB/rank:       64
+Cutoff:           32768
+Split(rank0):     0.0344133 s
+Copy(in total):   0 s
+Phase1 MAX:       1.1947 s
+Phase2 MAX:       4.33162 s
+Total  MAX:       5.56335 s
+Unaccounted:      0.00261974 s
+Final(local):     /scratch/s.khairy/mpi_omp_r0/merged_s4.bin
+--- [Verification] Checking /scratch/s.khairy/mpi_omp_r0/merged_s4.bin ---
+[Verify] SUCCESS: 30000000 records sorted correctly.
+[Post] Copied final output to: /home/s.khairy/project/mergesort/mpi/results/bin/out_cpu_nodes8.bin
+[Post] Copy time (excluded):   4.37908 s
+DONE.

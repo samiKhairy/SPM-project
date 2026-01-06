@@ -7,16 +7,16 @@ workload_params() {
   local w="${1:-cpu}"
   case "$w" in
     # Thread Scaling	
-    #io)  RECORDS=20000000;  PAYLOAD=128; MEM=256 ;;
-    #cpu) RECORDS=20000000; PAYLOAD=16;  MEM=64 ;;
+     io)  RECORDS=20000000;  PAYLOAD=128; MEM=256 ;;
+    cpu) RECORDS=20000000; PAYLOAD=16;  MEM=64 ;;
 	
     # N scaling		
     # io)  RECORDS=30000000;  PAYLOAD=128; MEM=256 ;;
     # cpu) RECORDS=30000000; PAYLOAD=16;  MEM=64 ;;
 	
     #  payload vary scaling		
-     io)  RECORDS=20000000;  PAYLOAD=128; MEM=256 ;;
-     cpu) RECORDS=20000000; PAYLOAD=16;  MEM=256 ;;
+    #io)  RECORDS=20000000;  PAYLOAD=128; MEM=256 ;;
+    #cpu) RECORDS=20000000; PAYLOAD=16;  MEM=256 ;;
 	
 
 

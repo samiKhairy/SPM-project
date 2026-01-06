@@ -1,0 +1,4 @@
+Nodes,1 Thread,2 Threads,4 Threads,8 Threads,16 Threads
+1,8.28s,6.94s,6.80s,7.04s,9.11s
+4,5.79s,5.44s,5.26s,5.04s (Best),5.35s
+8,6.34s,6.21s,6.07s,5.86s,5.58s (Best)
